@@ -28,7 +28,11 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # Import all models here to ensure they're registered with Base.metadata
-# from src.models import users, workers, customers, etc.
+from src.models import (
+    User, Worker, Customer, Service, Booking, Review,
+    AIMessageTemplate, AIMessage, UserActivityEvent,
+    Job, Campaign
+)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
