@@ -31,7 +31,23 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Constitution Alignment (MANDATORY): every plan MUST include a brief subsection that
+documents how the feature satisfies the project constitution. At minimum, address:
+
+- Security & Privacy: data classes used, retention plan, consent model, and any PII
+  handling. Note any compliance approvals required (e.g., GDPR, CCPA).
+- Real-time Reliability & Performance: proposed SLOs (p95/p99), expected load,
+  degradation behavior, and any capacity/scale concerns.
+- Deterministic & Testable AI Behavior: model artifact versioning, contract tests,
+  reproducibility approach, and known failure modes.
+- Observability & Error Transparency: logs, traces, metrics to be emitted and
+  correlation ids or tracing strategy.
+- Versioning & Governance: semantic version implications, required migration or
+  rollout plan (canary/feature-flag strategy), and rollback plan.
+
+If any of these gates cannot be met at planning time, the plan MUST include an explicit
+justification and a mitigation plan (timeline and owner). The `/speckit.plan` command will
+verify this subsection exists and fail the gate if absent.
 
 ## Project Structure
 

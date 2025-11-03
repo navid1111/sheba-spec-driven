@@ -68,6 +68,14 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T007 Create base models/entities that all stories depend on
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
+- [ ] T009a Implement model versioning and artifact registry (model id, metadata,
+  reproducibility artifacts)
+- [ ] T009b Add observability instrumentation (structured logging, traces, metrics,
+  correlation ids) and configure dashboards/alerts for SLOs
+- [ ] T009c Implement privacy & consent enforcement mechanisms and automate data-
+  retention policies
+- [ ] T009d Define SLOs for user-facing endpoints and create load/performance tests to
+  validate them prior to release
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
