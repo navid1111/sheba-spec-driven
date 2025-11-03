@@ -1,0 +1,30 @@
+# ShoktiAI Backend requirements (Python 3.11)
+# Core web + server
+fastapi~=0.115
+uvicorn[standard]~=0.30
+
+# Data & DB
+sqlalchemy~=2.0
+alembic~=1.13
+psycopg2-binary~=2.9
+
+# Config & settings
+pydantic~=2.9
+pydantic-settings~=2.5
+python-dotenv~=1.0
+
+# HTTP clients & auth
+httpx~=0.27
+PyJWT~=2.9
+
+# AI SDK
+openai>=1.0,<2.0
+
+# Scheduling & resilience
+apscheduler~=3.10
+tenacity~=9.0
+
+# Testing
+pytest~=8.3
+pytest-asyncio~=0.23
+factory_boy~=3.3
