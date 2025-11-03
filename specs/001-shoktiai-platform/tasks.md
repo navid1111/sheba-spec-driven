@@ -50,10 +50,10 @@ Checkpoint: App skeleton runs (uvicorn) and /health passes.
 Purpose: Core infrastructure required for ANY story to start.
 CRITICAL: Must complete before user stories.
 
-- [ ] T013 Define base models per data-model in `backend/src/models/__init__.py` and individual files: users.py, workers.py, customers.py, services.py, bookings.py, reviews.py
-- [ ] T014 Create engagement/event models: `backend/src/models/ai_message_templates.py`, `backend/src/models/ai_messages.py`, `backend/src/models/user_activity_events.py`
-- [ ] T015 Create jobs/campaign models: `backend/src/models/jobs.py`, `backend/src/models/campaigns.py`
-- [ ] T016 Generate and run Alembic migrations for all above in `backend/migrations/` (upgrade creates tables + indexes)
+- [X] T013 Define base models per data-model in `backend/src/models/__init__.py` and individual files: users.py, workers.py, customers.py, services.py, bookings.py, reviews.py
+- [X] T014 Create engagement/event models: `backend/src/models/ai_message_templates.py`, `backend/src/models/ai_messages.py`, `backend/src/models/user_activity_events.py`
+- [X] T015 Create jobs/campaign models: `backend/src/models/jobs.py`, `backend/src/models/campaigns.py`
+- [X] T016 Generate and run Alembic migrations for all above in `backend/migrations/` (upgrade creates tables + indexes)
 - [ ] T017 [P] Implement JWT utilities in `backend/src/lib/jwt.py` (HS256, exp, iat, sub)
 - [ ] T018 [P] Implement OTP provider abstraction in `backend/src/services/otp_provider.py` with `console` and `twilio` adapters
 - [ ] T019 [P] Implement AuthService in `backend/src/services/auth_service.py` (request_otp, verify_otp -> issues JWT)
