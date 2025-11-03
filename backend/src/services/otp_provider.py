@@ -85,6 +85,160 @@ class TwilioOTPProvider(OTPProvider):
             return False
 
 
+class MoceanOTPProvider(OTPProvider):
+    """Mocean SMS OTP provider for Bangladesh.
+    
+    Sends OTP codes via Mocean SMS API (works in Bangladesh).
+    Requires MOCEAN_TOKEN environment variable.
+    """
+    
+    def __init__(self):
+        """Initialize Mocean client."""
+        if not settings.mocean_token:
+            raise ValueError(
+                "Mocean token not configured. "
+                "Set MOCEAN_TOKEN environment variable."
+            )
+        
+        try:
+            from moceansdk import Client, Basic
+            self.client = Client(Basic(api_token=settings.mocean_token))
+        except ImportError:
+            raise ImportError(
+                "Mocean SDK not installed. "
+                "Install with: pip install moceansdk"
+            )
+    
+    async def send_otp(self, phone: str, code: str) -> bool:
+        """Send OTP via Mocean SMS."""
+        try:
+            # Remove '+' from phone number if present (Mocean expects raw digits)
+            clean_phone = phone.lstrip('+')
+            
+            res = self.client.sms.create({
+                "mocean-from": settings.mocean_from,
+                "mocean-to": clean_phone,
+                "mocean-text": f"Your ShoktiAI verification code is: {code}"
+            }).send()
+            
+            # Check if message was sent successfully
+            # Status 0 means success in Mocean API
+            if res and 'messages' in res:
+                for msg in res['messages']:
+                    if msg.get('status') == 0:
+                        return True
+            
+            print(f"❌ Mocean SMS failed: {res}")
+            return False
+        except Exception as e:
+            print(f"❌ Mocean SMS failed: {e}")
+            return False
+
+
+class EmailOTPProvider(OTPProvider):
+    """Email OTP provider using SMTP.
+    
+    Sends OTP codes via email using Gmail SMTP or other SMTP servers.
+    Requires SMTP configuration in environment variables.
+    """
+    
+    def __init__(self):
+        """Initialize SMTP configuration."""
+        if not settings.smtp_username or not settings.smtp_password:
+            raise ValueError(
+                "SMTP credentials not configured. "
+                "Set SMTP_USERNAME and SMTP_PASSWORD environment variables."
+            )
+        
+        self.smtp_host = settings.smtp_host
+        self.smtp_port = settings.smtp_port
+        self.smtp_username = settings.smtp_username
+        self.smtp_password = settings.smtp_password
+        self.from_email = settings.smtp_from_email or settings.smtp_username
+        self.from_name = settings.smtp_from_name
+    
+    async def send_otp(self, email: str, code: str) -> bool:
+        """Send OTP via email.
+        
+        Args:
+            email: Recipient email address
+            code: OTP code to send
+            
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f'Your ShoktiAI Verification Code: {code}'
+            msg['From'] = f'{self.from_name} <{self.from_email}>'
+            msg['To'] = email
+            
+            # Plain text version
+            text = f"""
+Hello,
+
+Your ShoktiAI verification code is: {code}
+
+This code will expire in 5 minutes.
+
+If you didn't request this code, please ignore this email.
+
+Best regards,
+ShoktiAI Team
+            """
+            
+            # HTML version
+            html = f"""
+<html>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #2563eb;">ShoktiAI Verification Code</h2>
+      <p>Hello,</p>
+      <p>Your verification code is:</p>
+      <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+        <h1 style="color: #2563eb; font-size: 36px; letter-spacing: 8px; margin: 0;">{code}</h1>
+      </div>
+      <p>This code will expire in <strong>5 minutes</strong>.</p>
+      <p style="color: #6b7280; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+      <p style="color: #6b7280; font-size: 12px;">Best regards,<br>ShoktiAI Team</p>
+    </div>
+  </body>
+</html>
+            """
+            
+            # Attach both versions
+            part1 = MIMEText(text, 'plain')
+            part2 = MIMEText(html, 'html')
+            msg.attach(part1)
+            msg.attach(part2)
+            
+            # Send email using SSL (port 465)
+            if self.smtp_port == 465:
+                # Use SMTP_SSL for port 465
+                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
+                    server.login(self.smtp_username, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                # Use SMTP with STARTTLS for port 587
+                with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                    server.starttls()
+                    server.login(self.smtp_username, self.smtp_password)
+                    server.send_message(msg)
+            
+            print(f"✅ Email OTP sent to {email}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Email send failed: {e}")
+            return False
+
+
 class OTPService:
     """OTP service for generating, storing, and verifying codes.
     
@@ -117,10 +271,24 @@ class OTPService:
                 # Fall back to console if Twilio not available
                 print("⚠️  Twilio not available, falling back to console provider")
                 return ConsoleOTPProvider()
+        elif provider_name == "mocean":
+            try:
+                return MoceanOTPProvider()
+            except ImportError:
+                # Fall back to console if Mocean not available
+                print("⚠️  Mocean SDK not available, falling back to console provider")
+                return ConsoleOTPProvider()
+        elif provider_name == "email":
+            try:
+                return EmailOTPProvider()
+            except (ImportError, ValueError) as e:
+                # Fall back to console if email not configured
+                print(f"⚠️  Email provider not available ({e}), falling back to console provider")
+                return ConsoleOTPProvider()
         else:
             raise ValueError(
                 f"Unknown OTP provider: {provider_name}. "
-                f"Valid options: console, twilio"
+                f"Valid options: console, twilio, mocean, email"
             )
     
     def generate_code(self) -> str:

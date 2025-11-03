@@ -45,17 +45,29 @@ class Settings(BaseSettings):
     # OTP
     otp_provider: str = Field(
         default="console",
-        description="OTP delivery provider: console or twilio"
+        description="OTP delivery provider: console, twilio, mocean, or email"
     )
     otp_ttl_seconds: int = Field(
         default=300,  # 5 minutes
         description="OTP code time-to-live in seconds"
     )
     
+    # Email SMTP (required if otp_provider=email)
+    smtp_host: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_username: str = Field(default="", description="SMTP username/email")
+    smtp_password: str = Field(default="", description="SMTP password/app password")
+    smtp_from_email: str = Field(default="", description="From email address")
+    smtp_from_name: str = Field(default="ShoktiAI", description="From name")
+    
     # Twilio (optional, required if otp_provider=twilio)
     twilio_account_sid: str = Field(default="", description="Twilio account SID")
     twilio_auth_token: str = Field(default="", description="Twilio auth token")
     twilio_from_number: str = Field(default="", description="Twilio sender phone number")
+    
+    # Mocean (optional, required if otp_provider=mocean)
+    mocean_token: str = Field(default="", description="Mocean API token")
+    mocean_from: str = Field(default="SHOKTIAI", description="Mocean sender name")
     
     # Application
     app_name: str = Field(default="ShoktiAI Backend", description="Application name")

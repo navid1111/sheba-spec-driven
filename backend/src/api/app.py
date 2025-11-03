@@ -8,9 +8,18 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.api.routes import auth
+from src.api.routes import auth, services
+from src.api.middleware.error_handler import (
+    AppException,
+    app_exception_handler,
+    validation_exception_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+)
 from src.lib.logging import get_logger
 
 logger = get_logger(__name__)
@@ -99,36 +108,16 @@ app.add_middleware(
 app.add_middleware(CorrelationIdMiddleware)
 
 
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Global exception handler for unhandled exceptions.
-    Returns a consistent error response format.
-    """
-    correlation_id = getattr(request.state, "correlation_id", "unknown")
-    
-    logger.error(
-        f"Unhandled exception: {exc}",
-        extra={
-            "correlation_id": correlation_id,
-            "path": request.url.path,
-            "method": request.method,
-        },
-        exc_info=True,
-    )
-    
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "Internal server error",
-            "correlation_id": correlation_id,
-        }
-    )
+# Register exception handlers
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(services.router)
 
 
 @app.get("/health")

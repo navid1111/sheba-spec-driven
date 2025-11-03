@@ -46,7 +46,7 @@ def test_request_otp_invalid_phone():
         
         assert response.status_code == 400
         data = response.json()
-        assert "detail" in data
+        assert "error" in data  # Changed from "detail" to "error"
 
 
 @pytest.mark.integration
@@ -65,7 +65,7 @@ def test_request_otp_send_failure():
         
         assert response.status_code == 500
         data = response.json()
-        assert "detail" in data
+        assert "error" in data  # Changed from "detail" to "error"
 
 
 @pytest.mark.integration
@@ -118,8 +118,8 @@ def test_verify_otp_invalid_code():
         
         assert response.status_code == 401
         data = response.json()
-        assert "detail" in data
-        assert "Invalid or expired" in data["detail"]
+        assert "error" in data  # Changed from "detail" to "error"
+        assert "Invalid or expired" in data["error"]
 
 
 @pytest.mark.integration
@@ -132,7 +132,8 @@ def test_verify_otp_missing_fields():
     
     assert response.status_code == 422  # Validation error
     data = response.json()
-    assert "detail" in data
+    assert "error" in data  # Changed from "detail" to "error" (now in our standard format)
+    assert "details" in data  # Our validation handler includes details
 
 
 @pytest.mark.integration

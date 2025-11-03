@@ -44,9 +44,13 @@ async def test_request_and_verify_otp_success():
     service = OTPService()
     phone = "+8801712345678"
     
-    # Request OTP
-    success = await service.request_otp(phone)
-    assert success is True
+    # Mock the provider's send_otp to avoid actual email/SMS sending
+    with patch.object(service.provider, 'send_otp', new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        
+        # Request OTP
+        success = await service.request_otp(phone)
+        assert success is True
     
     # Get the code that was generated (from internal store)
     # In real test, we'd intercept the send
@@ -77,8 +81,12 @@ async def test_verify_otp_wrong_code():
     service = OTPService()
     phone = "+8801712345678"
     
-    # Request OTP
-    await service.request_otp(phone)
+    # Mock the provider's send_otp to avoid actual email/SMS sending
+    with patch.object(service.provider, 'send_otp', new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        
+        # Request OTP
+        await service.request_otp(phone)
     
     # Try wrong code
     result = await service.verify_otp(phone, "999999")
@@ -139,9 +147,13 @@ async def test_clear_otp():
     service = OTPService()
     phone = "+8801712345678"
     
-    # Request OTP
-    await service.request_otp(phone)
-    assert phone in service._store
+    # Mock the provider's send_otp to avoid actual email/SMS sending
+    with patch.object(service.provider, 'send_otp', new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        
+        # Request OTP
+        await service.request_otp(phone)
+        assert phone in service._store
     
     # Clear it
     service.clear_otp(phone)

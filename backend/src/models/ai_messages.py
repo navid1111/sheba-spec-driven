@@ -22,6 +22,7 @@ class MessageRole(str, enum.Enum):
 class MessageChannel(str, enum.Enum):
     """Delivery channel enumeration."""
     SMS = "sms"
+    EMAIL = "email"
     APP_PUSH = "app_push"
     WHATSAPP = "whatsapp"
     IN_APP = "in_app"
