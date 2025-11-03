@@ -28,18 +28,18 @@ Notes:
 
 Purpose: Minimal project initialization so the team can collaborate and run the app locally.
 
-- [ ] T001 Create backend skeleton directories in `backend/src/{api,models,services,ai,jobs,lib}` and `backend/tests/{unit,integration,contract}`
-- [ ] T002 Create `backend/requirements.txt` with stack from plan.md (FastAPI, SQLAlchemy 2.x, Alembic, psycopg2-binary, Pydantic v2, httpx, PyJWT, python-dotenv, OpenAI, APScheduler, tenacity, pytest, pytest-asyncio, factory_boy)
-- [ ] T003 [P] Add `.env.example` in `backend/.env.example` with keys: DATABASE_URL, OPENAI_API_KEY, JWT_SECRET, OTP_PROVIDER, TWILIO_* (from quickstart.md)
-- [ ] T004 [P] Scaffold FastAPI app with health route in `backend/src/api/app.py` (GET /health -> 200 {status:"ok"})
-- [ ] T005 [P] Configure settings with pydantic-settings in `backend/src/lib/settings.py` (loads .env)
-- [ ] T006 [P] Configure database engine/session helper in `backend/src/lib/db.py` (SQLAlchemy 2.x, async optional later)
-- [ ] T007 [P] Initialize Alembic in `backend/` and configure `alembic.ini` sqlalchemy.url to use env `DATABASE_URL`
-- [ ] T008 [P] Add structured logging helper in `backend/src/lib/logging.py` (JSON logger + correlation_id support)
-- [ ] T009 [P] Add OpenAI client stub in `backend/src/ai/client.py` (reads OPENAI_API_KEY; no calls yet)
-- [ ] T010 [P] Add test scaffolding: `backend/tests/integration/test_health.py` (assert /health 200) using httpx TestClient
-- [ ] T011 [P] Add `backend/pyproject.toml` or `ruff.toml` and `pytest.ini` minimal configs
-- [ ] T012 Add `backend/README.md` quickstart (activate venv, install, run uvicorn, env variables)
+- [X] T001 Create backend skeleton directories in `backend/src/{api,models,services,ai,jobs,lib}` and `backend/tests/{unit,integration,contract}`
+- [X] T002 Create `backend/requirements.txt` with stack from plan.md (FastAPI, SQLAlchemy 2.x, Alembic, psycopg2-binary, Pydantic v2, httpx, PyJWT, python-dotenv, OpenAI, APScheduler, tenacity, pytest, pytest-asyncio, factory_boy)
+- [X] T003 [P] Add `.env.example` in `backend/.env.example` with keys: DATABASE_URL, OPENAI_API_KEY, JWT_SECRET, OTP_PROVIDER, TWILIO_* (from quickstart.md)
+- [X] T004 [P] Scaffold FastAPI app with health route in `backend/src/api/app.py` (GET /health -> 200 {status:"ok"})
+- [X] T005 [P] Configure settings with pydantic-settings in `backend/src/lib/settings.py` (loads .env)
+- [X] T006 [P] Configure database engine/session helper in `backend/src/lib/db.py` (SQLAlchemy 2.x, async optional later)
+- [X] T007 [P] Initialize Alembic in `backend/` and configure `alembic.ini` sqlalchemy.url to use env `DATABASE_URL`
+- [X] T008 [P] Add structured logging helper in `backend/src/lib/logging.py` (JSON logger + correlation_id support)
+- [X] T009 [P] Add OpenAI client stub in `backend/src/ai/client.py` (reads OPENAI_API_KEY; no calls yet)
+- [X] T010 [P] Add test scaffolding: `backend/tests/integration/test_health.py` (assert /health 200) using httpx TestClient
+- [X] T011 [P] Add `backend/pyproject.toml` or `ruff.toml` and `pytest.ini` minimal configs
+- [X] T012 Add `backend/README.md` quickstart (activate venv, install, run uvicorn, env variables)
 
 Checkpoint: App skeleton runs (uvicorn) and /health passes.
 
