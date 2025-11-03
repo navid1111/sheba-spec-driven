@@ -139,6 +139,63 @@ Once the server is running:
 - Interactive docs (Swagger): `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+## Key Features
+
+### Authentication
+- **OTP-based login**: SMS-based one-time passwords for secure authentication
+- **JWT tokens**: HS256-signed tokens with 24-hour expiry
+- **User provisioning**: Automatic user creation on first login
+
+### Middleware
+- **CORS**: Configured for local development (localhost:3000, localhost:5173)
+- **Correlation ID**: Automatic request tracking with `X-Correlation-ID` header
+  - Accepts custom correlation IDs from clients
+  - Generates UUID if not provided
+  - Includes in all responses and logs
+- **Global error handling**: Consistent JSON error responses
+- **Request logging**: Structured JSON logs with correlation ID
+
+### Available Endpoints
+- `GET /health` - Health check
+- `POST /auth/request-otp` - Request OTP code
+- `POST /auth/verify-otp` - Verify OTP and get JWT token
+
+## Manual Testing
+
+### Test Auth Flow
+```powershell
+# Start the server
+uvicorn src.api.app:app --reload
+
+# In another terminal, run the manual test script
+python manual_test_auth.py
+```
+
+### Test Middleware
+```powershell
+# With server running
+python manual_test_middleware.py
+```
+
+### Using curl
+```powershell
+# Health check
+curl http://localhost:8000/health
+
+# Request OTP
+curl -X POST http://localhost:8000/auth/request-otp `
+  -H "Content-Type: application/json" `
+  -d '{"phone_number": "+8801715914254", "user_type": "customer"}'
+
+# Check server console for OTP code, then verify
+curl -X POST http://localhost:8000/auth/verify-otp `
+  -H "Content-Type: application/json" `
+  -d '{"phone_number": "+8801715914254", "otp_code": "123456"}'
+
+# Test correlation ID
+curl -H "X-Correlation-ID: my-test-id" http://localhost:8000/health
+```
+
 ## Troubleshooting
 
 ### Database Connection Issues

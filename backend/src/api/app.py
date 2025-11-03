@@ -1,15 +1,131 @@
 """
 FastAPI application entry point with health check route.
 """
-from fastapi import FastAPI
+import uuid
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.routes import auth
+from src.lib.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+# Correlation ID middleware
+class CorrelationIdMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to add correlation_id to all requests for distributed tracing.
+    Accepts X-Correlation-ID from incoming requests or generates a new one.
+    """
+    
+    async def dispatch(self, request: Request, call_next):
+        # Get correlation ID from header or generate new one
+        correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+        
+        # Store in request state for access in route handlers
+        request.state.correlation_id = correlation_id
+        
+        # Log incoming request
+        logger.info(
+            "Incoming request",
+            extra={
+                "correlation_id": correlation_id,
+                "method": request.method,
+                "path": request.url.path,
+                "client": request.client.host if request.client else None,
+            }
+        )
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add correlation ID to response headers
+        response.headers["X-Correlation-ID"] = correlation_id
+        
+        # Log response
+        logger.info(
+            "Response sent",
+            extra={
+                "correlation_id": correlation_id,
+                "status_code": response.status_code,
+            }
+        )
+        
+        return response
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Application lifespan manager for startup/shutdown events.
+    """
+    # Startup
+    logger.info("ShoktiAI Backend starting up...")
+    yield
+    # Shutdown
+    logger.info("ShoktiAI Backend shutting down...")
+
 
 app = FastAPI(
     title="ShoktiAI Backend",
     version="1.0.0",
-    description="Core APIs for Customer, Worker, Admin, and internal AI orchestration"
+    description="Core APIs for Customer, Worker, Admin, and internal AI orchestration",
+    lifespan=lifespan,
 )
+
+
+# CORS middleware - configure allowed origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React dev server
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        # Add production origins as needed
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
+
+# Correlation ID middleware
+app.add_middleware(CorrelationIdMiddleware)
+
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler for unhandled exceptions.
+    Returns a consistent error response format.
+    """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    
+    logger.error(
+        f"Unhandled exception: {exc}",
+        extra={
+            "correlation_id": correlation_id,
+            "path": request.url.path,
+            "method": request.method,
+        },
+        exc_info=True,
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "Internal server error",
+            "correlation_id": correlation_id,
+        }
+    )
+
 
 # Include routers
 app.include_router(auth.router)
