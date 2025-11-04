@@ -1,0 +1,45 @@
+# Render Blueprint for ShoktiAI Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: shoktiai-backend
+    env: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DATABASE_URL
+        sync: false  # Set in Render Dashboard (use your Neon connection string)
+      - key: OPENAI_API_KEY
+        sync: false  # Set in Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRATION_MINUTES
+        value: 10080
+      - key: OTP_PROVIDER
+        value: email
+      - key: OTP_EXPIRATION_MINUTES
+        value: 10
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        sync: false  # Set in Render Dashboard
+      - key: SMTP_PASSWORD
+        sync: false  # Set in Render Dashboard
+      - key: SMTP_FROM_EMAIL
+        sync: false  # Set in Render Dashboard
+      - key: BASE_URL
+        value: https://app.sheba.xyz
+      - key: DEEP_LINK_BASE_URL
+        value: https://app.sheba.xyz/book
+    healthCheckPath: /health
