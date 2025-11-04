@@ -77,8 +77,8 @@ class SegmentationService:
         )
         
         # Step 2: Filter by marketing consent
-        # consent JSONB should have: {"marketing": true}
-        # Using PostgreSQL JSONB operators: (consent->>'marketing')::boolean = true
+        # consent JSONB should have: {"marketing_consent": true}
+        # Using PostgreSQL JSONB operators: (consent->>'marketing_consent')::boolean = true
         from sqlalchemy import cast, Boolean, literal
         
         customers_with_consent = (
@@ -90,7 +90,7 @@ class SegmentationService:
                     User.is_active == True,
                     # Check that marketing consent is explicitly true
                     func.coalesce(
-                        cast(User.consent['marketing'].astext, Boolean),
+                        cast(User.consent['marketing_consent'].astext, Boolean),
                         literal(False)
                     ) == True
                 )
@@ -168,6 +168,19 @@ class SegmentationService:
         else:
             # Window crosses midnight (e.g., 22:00 to 02:00)
             return current_time_only >= start_time or current_time_only <= end_time
+    
+    def get_last_booking(self, customer: Customer) -> Optional[Booking]:
+        """
+        Get the most recent completed booking for a customer.
+        
+        Args:
+            customer: Customer object
+        
+        Returns:
+            Most recent Booking or None if no bookings found
+        """
+        bookings = self.get_customer_booking_history(customer.id, limit=1)
+        return bookings[0] if bookings else None
     
     def get_customer_booking_history(
         self,

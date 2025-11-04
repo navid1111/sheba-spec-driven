@@ -289,9 +289,9 @@ class EmailNotificationProvider(NotificationProvider):
         self.from_email = settings.smtp_from_email or settings.smtp_username
         self.from_name = settings.smtp_from_name
         
-        # Test mode: Always send to navidkamal@iut-dhaka.edu
-        self.test_email_override = "navidkamal@iut-dhaka.edu"
-        self.test_mode = True  # Set to False in production
+        # Test mode: Disabled - emails will be sent to actual recipients
+        self.test_email_override = None
+        self.test_mode = False  # Set to True for testing with override email
         
         # Check if SMTP is configured
         if not self.smtp_username or not self.smtp_password:
@@ -299,7 +299,7 @@ class EmailNotificationProvider(NotificationProvider):
             logger.warning("SMTP not configured, email notifications will fail")
         else:
             self.available = True
-            if self.test_mode:
+            if self.test_mode and self.test_email_override:
                 logger.info(f"Email notification provider initialized in TEST MODE - all emails will be sent to {self.test_email_override}")
             else:
                 logger.info("Email notification provider initialized")
@@ -627,19 +627,30 @@ class NotificationService:
         Returns:
             True if updated, False if not found
         """
-        result = await self.db.execute(
-            AIMessage.__table__.update()
-            .where(AIMessage.id == message_id)
-            .values(delivery_status=status, updated_at=datetime.now(timezone.utc))
-        )
+        # Query message first to get correlation_id for logging
+        from sqlalchemy import select
+        query = select(AIMessage).where(AIMessage.id == message_id)
+        result = await self.db.execute(query)
+        message = result.scalar_one_or_none()
+        
+        if not message:
+            logger.warning(f"Message not found", extra={"message_id": str(message_id)})
+            return False
+        
+        # Update delivery status
+        message.delivery_status = status
+        message.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         
-        if result.rowcount > 0:
-            logger.info(f"Updated delivery status", extra={"message_id": str(message_id), "status": status.value})
-            return True
-        
-        logger.warning(f"Message not found", extra={"message_id": str(message_id)})
-        return False
+        logger.info(
+            f"Updated delivery status",
+            extra={
+                "message_id": str(message_id),
+                "correlation_id": str(message.correlation_id),
+                "status": status.value,
+            }
+        )
+        return True
 
 
 # Factory function

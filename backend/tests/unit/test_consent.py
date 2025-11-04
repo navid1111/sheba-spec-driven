@@ -142,11 +142,18 @@ async def test_check_frequency_cap_under_daily_limit():
         MagicMock(scalar=MagicMock(return_value=5)),  # Weekly count
     ]
     
+    # Use custom caps with higher limits for this test
+    custom_caps = {
+        "sms_per_day": 3,
+        "sms_per_week": 10,
+    }
+    
     allowed, reason = await check_frequency_cap(
         db=mock_db,
         user_id=user_id,
         channel=MessageChannel.SMS,
-        role=MessageRole.CUSTOMER
+        role=MessageRole.CUSTOMER,
+        caps=custom_caps
     )
     
     assert allowed is True
@@ -181,6 +188,9 @@ async def test_check_frequency_cap_weekly_limit_exceeded():
     mock_db = AsyncMock()
     user_id = uuid4()
     
+    # Use custom caps to test weekly limit
+    custom_caps = {"sms_per_day": 5, "sms_per_week": 10}
+    
     # Mock count queries - under daily but at weekly cap
     mock_db.execute.side_effect = [
         MagicMock(scalar=MagicMock(return_value=2)),   # Daily: 2 (under)
@@ -191,7 +201,8 @@ async def test_check_frequency_cap_weekly_limit_exceeded():
         db=mock_db,
         user_id=user_id,
         channel=MessageChannel.SMS,
-        role=MessageRole.CUSTOMER
+        role=MessageRole.CUSTOMER,
+        caps=custom_caps
     )
     
     assert allowed is False
@@ -290,6 +301,9 @@ async def test_can_send_notification_allowed():
         consent={"sms": True}
     )
     
+    # Use custom caps to test allowed scenario
+    custom_caps = {"sms_per_day": 3, "sms_per_week": 10}
+    
     # Mock consent check (user query)
     mock_db.execute.side_effect = [
         MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user)),
@@ -302,7 +316,8 @@ async def test_can_send_notification_allowed():
         db=mock_db,
         user_id=user_id,
         channel=MessageChannel.SMS,
-        role=MessageRole.CUSTOMER
+        role=MessageRole.CUSTOMER,
+        caps=custom_caps
     )
     
     assert allowed is True

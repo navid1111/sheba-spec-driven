@@ -14,6 +14,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.lib.logging import get_logger
+from src.lib.config_flags import get_frequency_caps
 from src.models.users import User
 from src.models.workers import Worker
 from src.models.ai_messages import AIMessage, MessageChannel, MessageRole
@@ -21,7 +22,8 @@ from src.models.ai_messages import AIMessage, MessageChannel, MessageRole
 logger = get_logger(__name__)
 
 
-# Frequency cap limits (configurable)
+# Legacy DEFAULT_CAPS for backward compatibility
+# NOTE: Prefer using FrequencyCaps from config_flags for new code
 DEFAULT_CAPS = {
     "sms_per_day": 3,
     "sms_per_week": 10,
@@ -30,6 +32,54 @@ DEFAULT_CAPS = {
     "whatsapp_per_day": 5,
     "whatsapp_per_week": 20,
 }
+
+
+def _get_caps_for_role(role: MessageRole, channel: MessageChannel, custom_caps: Optional[dict] = None) -> tuple[int, int]:
+    """
+    Get daily and weekly caps for a given role and channel.
+    
+    Uses FrequencyCaps configuration with channel-specific overrides.
+    Falls back to custom_caps dict if provided (legacy support).
+    
+    Args:
+        role: MessageRole (CUSTOMER or WORKER)
+        channel: MessageChannel
+        custom_caps: Optional custom caps dict (legacy)
+        
+    Returns:
+        Tuple of (daily_cap, weekly_cap)
+    """
+    # If custom caps provided, use legacy logic
+    if custom_caps is not None:
+        channel_key = channel.value
+        daily_cap = custom_caps.get(f"{channel_key}_per_day", 999)
+        weekly_cap = custom_caps.get(f"{channel_key}_per_week", 999)
+        return daily_cap, weekly_cap
+    
+    # Use FrequencyCaps configuration
+    freq_caps = get_frequency_caps()
+    
+    # Get base limits for role
+    if role == MessageRole.CUSTOMER:
+        daily_cap = freq_caps.customer_daily_limit
+        weekly_cap = freq_caps.customer_weekly_limit
+    else:  # WORKER
+        daily_cap = freq_caps.worker_daily_limit
+        weekly_cap = freq_caps.worker_weekly_limit
+    
+    # Apply channel-specific overrides if set
+    channel_key = channel.value
+    if channel_key == "sms":
+        daily_cap = freq_caps.sms_daily_limit or daily_cap
+        weekly_cap = freq_caps.sms_weekly_limit or weekly_cap
+    elif channel_key == "email":
+        daily_cap = freq_caps.email_daily_limit or daily_cap
+        weekly_cap = freq_caps.email_weekly_limit or weekly_cap
+    elif channel_key == "app_push":
+        daily_cap = freq_caps.push_daily_limit or daily_cap
+        weekly_cap = freq_caps.push_weekly_limit or weekly_cap
+    
+    return daily_cap, weekly_cap
 
 
 async def check_consent(
@@ -140,23 +190,22 @@ async def check_frequency_cap(
     """
     Check if sending a message would exceed frequency caps.
     
+    Uses FrequencyCaps configuration from config_flags with role-based and
+    channel-specific limits. Supports legacy caps dict for backward compatibility.
+    
     Args:
         db: Database session
         user_id: Customer user ID
         worker_id: Worker ID
         channel: Message channel
         role: Recipient role
-        caps: Custom frequency caps (uses DEFAULT_CAPS if None)
+        caps: Custom frequency caps dict (legacy, uses FrequencyCaps if None)
         
     Returns:
         Tuple of (allowed: bool, reason: Optional[str])
         - (True, None) if under cap
         - (False, "reason") if cap exceeded
     """
-    # Use default caps if not provided
-    if caps is None:
-        caps = DEFAULT_CAPS
-    
     # Determine which ID to use
     recipient_id = user_id if role == MessageRole.CUSTOMER else worker_id
     
@@ -165,11 +214,10 @@ async def check_frequency_cap(
         return False, "No recipient ID"
     
     try:
-        # Get channel-specific caps
-        channel_key = channel.value  # e.g., "sms", "push"
-        daily_cap = caps.get(f"{channel_key}_per_day", 999)
-        weekly_cap = caps.get(f"{channel_key}_per_week", 999)
+        # Get daily and weekly caps for this role/channel
+        daily_cap, weekly_cap = _get_caps_for_role(role, channel, caps)
         
+        channel_key = channel.value  # For logging
         now = datetime.now(timezone.utc)
         day_ago = now - timedelta(days=1)
         week_ago = now - timedelta(days=7)
