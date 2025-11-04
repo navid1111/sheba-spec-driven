@@ -21,6 +21,7 @@ from src.api.middleware.error_handler import (
     unhandled_exception_handler,
 )
 from src.lib.logging import get_logger
+from src.lib.metrics import get_metrics_collector
 
 logger = get_logger(__name__)
 
@@ -127,3 +128,31 @@ app.include_router(events.router)
 def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics_endpoint():
+    """
+    Prometheus-compatible metrics endpoint.
+    
+    Exposes application metrics in Prometheus text format for scraping.
+    Not included in OpenAPI docs (internal/ops endpoint).
+    
+    Metrics exposed:
+    - ai_messages_sent_total: Total messages sent by agent type, channel, message type
+    - ai_messages_delivered_total: Successfully delivered messages
+    - ai_messages_failed_total: Failed deliveries
+    - user_events_total: User interaction events (opens, clicks, conversions)
+    - opt_outs_total: User opt-outs by channel and reason
+    
+    Returns:
+        Prometheus text format metrics
+    """
+    metrics = get_metrics_collector()
+    prometheus_output = metrics.export_prometheus()
+    
+    # Return as plain text for Prometheus scraper
+    return JSONResponse(
+        content=prometheus_output,
+        media_type="text/plain; version=0.0.4; charset=utf-8"
+    )

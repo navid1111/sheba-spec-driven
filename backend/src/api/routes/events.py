@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db, get_current_user
 from src.lib.logging import get_logger
+from src.lib.metrics import get_metrics_collector
 from src.models.user_activity_events import (
     UserActivityEvent,
     EventType,
@@ -143,6 +144,24 @@ async def ingest_event(
     db.add(event)
     await db.commit()
     await db.refresh(event)
+    
+    # Track metrics for opens, clicks, and conversions
+    metrics = get_metrics_collector()
+    metadata = request.metadata or {}
+    
+    # Determine agent_type and channel from metadata
+    agent_type = metadata.get("agent_type", "unknown")
+    channel = metadata.get("channel", "UNKNOWN")
+    
+    # Increment appropriate counter based on event type
+    if event_type_enum == EventType.NOTIFICATION_OPENED:
+        metrics.increment_opens(agent_type=agent_type, channel=channel, source=source_enum.value)
+    elif event_type_enum == EventType.MESSAGE_CLICKED:
+        metrics.increment_clicks(agent_type=agent_type, channel=channel, source=source_enum.value)
+    elif event_type_enum == EventType.BOOKING_CREATED:
+        metrics.increment_conversions(agent_type=agent_type, channel=channel, conversion_type="booking_created")
+    elif event_type_enum == EventType.DEEPLINK_FOLLOWED:
+        metrics.increment_conversions(agent_type=agent_type, channel=channel, conversion_type="deeplink_followed")
     
     logger.info(
         f"User event ingested",

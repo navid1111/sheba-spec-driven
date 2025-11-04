@@ -25,6 +25,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from src.lib.logging import get_logger
 from src.lib.db import get_db
 from src.lib.deeplink import get_deep_link_generator, DeepLinkGenerator
+from src.lib.metrics import get_metrics_collector
+from src.ai.template_loader import load_template, format_template, get_template_version
 from src.services.segmentation_service import SegmentationService
 from src.services.notification_service import (
     get_notification_service,
@@ -165,7 +167,7 @@ class SmartEngageOrchestrator:
     
     def _build_reminder_prompt(self, context: Dict[str, Any]) -> str:
         """
-        Build prompt for OpenAI message generation.
+        Build prompt for OpenAI message generation using versioned template.
         
         Args:
             context: Dictionary with customer/service context
@@ -173,11 +175,17 @@ class SmartEngageOrchestrator:
         Returns:
             Prompt string
         """
-        promo_section = ""
-        if context["has_promo"]:
-            promo_section = f"\n- মেনশন করুন প্রোমো কোড: {context['promo_code']}"
+        # Load template from file
+        template = load_template("smartengage", locale="bn", version=1)
         
-        prompt = f"""
+        # Fallback to hardcoded prompt if template not found
+        if not template:
+            logger.warning("Template file not found, using fallback prompt")
+            promo_section = ""
+            if context["has_promo"]:
+                promo_section = f"\n- মেনশন করুন প্রোমো কোড: {context['promo_code']}"
+            
+            prompt = f"""
 একটি বন্ধুত্বপূর্ণ রিমাইন্ডার মেসেজ লিখুন বাংলায়:
 
 গ্রাহক: {context['customer_name']}
@@ -193,6 +201,15 @@ class SmartEngageOrchestrator:
 উদাহরণ স্টাইল:
 "আপনার {context['service_name_bn']} সার্ভিসের সময় হয়ে গেছে! আবার বুক করে আপনার ঘর ঝকঝকে করুন। এখনই অ্যাপে গিয়ে বুক করুন।"
 """
+            return prompt.strip()
+        
+        # Build promo section if applicable
+        promo_section = ""
+        if context["has_promo"]:
+            promo_section = f"\nপ্রোমো কোড: {context['promo_code']} - মেনশন করুন মেসেজে"
+        
+        # Format template with context
+        prompt = format_template(template, context, promo_section)
         return prompt.strip()
     
     async def _apply_safety_filter(
@@ -410,6 +427,15 @@ class SmartEngageOrchestrator:
                 ai_message.delivery_status = DeliveryStatus.SENT
                 ai_message.sent_at = datetime.now(timezone.utc)
                 self.db.commit()
+                
+                # Track metrics
+                metrics = get_metrics_collector()
+                metrics.increment_sends(
+                    agent_type="smartengage",
+                    channel=MessageChannel.EMAIL.value,
+                    message_type=MessageType.REMINDER.value,
+                    status="sent"
+                )
                 
                 logger.info(
                     f"SmartEngage reminder sent successfully "
