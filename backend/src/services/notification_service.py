@@ -289,9 +289,9 @@ class EmailNotificationProvider(NotificationProvider):
         self.from_email = settings.smtp_from_email or settings.smtp_username
         self.from_name = settings.smtp_from_name
         
-        # Test mode: Always send to navidkamal@iut-dhaka.edu
-        self.test_email_override = "navidkamal@iut-dhaka.edu"
-        self.test_mode = True  # Set to False in production
+        # Test mode: Disabled - emails will be sent to actual recipients
+        self.test_email_override = None
+        self.test_mode = False  # Set to True for testing with override email
         
         # Check if SMTP is configured
         if not self.smtp_username or not self.smtp_password:
@@ -299,7 +299,7 @@ class EmailNotificationProvider(NotificationProvider):
             logger.warning("SMTP not configured, email notifications will fail")
         else:
             self.available = True
-            if self.test_mode:
+            if self.test_mode and self.test_email_override:
                 logger.info(f"Email notification provider initialized in TEST MODE - all emails will be sent to {self.test_email_override}")
             else:
                 logger.info("Email notification provider initialized")
