@@ -36,6 +36,11 @@ class Service(Base):
     
     # Service details
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name_bn: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Service name in Bengali"
+    )
     category: Mapped[ServiceCategory] = mapped_column(
         SQLEnum(ServiceCategory, name="service_category"),
         nullable=False,
