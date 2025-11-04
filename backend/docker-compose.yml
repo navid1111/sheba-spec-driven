@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: shoktiai-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shoktiai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shoktiai_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-shoktiai}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shoktiai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shoktiai-network
+    restart: unless-stopped
+
+  # ShoktiAI Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shoktiai-backend
+    environment:
+      # Database
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-shoktiai}:${POSTGRES_PASSWORD:-shoktiai_dev_password}@postgres:5432/${POSTGRES_DB:-shoktiai}
+      
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-10080}
+      
+      # OTP
+      OTP_PROVIDER: ${OTP_PROVIDER:-console}
+      OTP_EXPIRATION_MINUTES: ${OTP_EXPIRATION_MINUTES:-10}
+      
+      # Twilio (optional)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      
+      # Email (optional)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@sheba.xyz}
+      
+      # App Config
+      APP_NAME: ShoktiAI Backend
+      BASE_URL: ${BASE_URL:-https://app.sheba.xyz}
+      DEEP_LINK_BASE_URL: ${DEEP_LINK_BASE_URL:-https://app.sheba.xyz/book}
+      
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./src/ai/templates:/app/src/ai/templates
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shoktiai-network
+    restart: unless-stopped
+
+  # Prometheus (Metrics Collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: shoktiai-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+    networks:
+      - shoktiai-network
+    restart: unless-stopped
+
+  # Grafana (Metrics Visualization) - Optional
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shoktiai-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - shoktiai-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  shoktiai-network:
+    driver: bridge
