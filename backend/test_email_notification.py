@@ -43,34 +43,70 @@ async def test_email_notification():
         return
     
     # Send test notification
-    test_email = smtp_from_email  # Send to self for testing
-    test_message = "This is a test notification from ShoktiAI Platform. If you're seeing this, email notifications are working! 🎉"
+    test_email = "navidkamal@iut-dhaka.edu"  # Always send to your email for testing
+    test_message = """
+আসসালামু আলাইকুম!
+
+এটি ShoktiAI থেকে একটি পরীক্ষা বার্তা।
+
+আপনার হোম ক্লিনিং সার্ভিসের জন্য সময় হয়ে গেছে! গত মাসে আপনি আমাদের সেবা নিয়েছিলেন এবং সন্তুষ্ট ছিলেন। আবার বুক করতে নিচের লিংকে ক্লিক করুন।
+
+---
+
+Hello!
+
+This is a test message from ShoktiAI SmartEngage.
+
+It's time for your home cleaning service! Last month you used our service and were satisfied. Click below to book again.
+
+Thank you,
+ShoktiAI Team 🎉
+"""
     
     print(f"📧 Sending test notification to: {test_email}")
-    print(f"   Message: {test_message[:50]}...")
+    print(f"   Subject: Test - ShoktiAI SmartEngage Reminder")
     print()
     
     try:
         # Create message
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Test Notification from ShoktiAI"
+        msg["Subject"] = "Test - ShoktiAI SmartEngage Reminder"
         msg["From"] = f"{smtp_from_name} <{smtp_from_email}>"
         msg["To"] = test_email
         
         # Plain text version
         text_part = MIMEText(test_message, "plain")
         
-        # HTML version with styling
+        # HTML version with styling (matching the notification service template)
         html_content = f"""
         <html>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-                <h1 style="color: white; margin: 0;">ShoktiAI Platform</h1>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">ShoktiAI</h1>
+                <p style="color: #e0e7ff; margin: 5px 0 0 0; font-size: 14px;">SMARTENGAGE • REMINDER</p>
             </div>
-            <div style="padding: 30px; background-color: #f5f5f5;">
-                <div style="background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <p style="color: #333; line-height: 1.6; margin: 0;">{test_message}</p>
+            
+            <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                    <p style="margin: 0; color: #92400e; font-weight: bold;">🧪 TEST MODE</p>
+                    <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">
+                        This is a test email from the ShoktiAI SmartEngage system.
+                    </p>
                 </div>
+                
+                <div style="font-size: 16px; line-height: 1.8;">
+                    {test_message.replace(chr(10), '<br>')}
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                        This is an automated message from ShoktiAI. If you wish to unsubscribe, please contact support.
+                    </p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+                <p>© 2025 ShoktiAI. All rights reserved.</p>
             </div>
         </body>
         </html>

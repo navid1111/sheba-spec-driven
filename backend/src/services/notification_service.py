@@ -289,13 +289,20 @@ class EmailNotificationProvider(NotificationProvider):
         self.from_email = settings.smtp_from_email or settings.smtp_username
         self.from_name = settings.smtp_from_name
         
+        # Test mode: Always send to navidkamal@iut-dhaka.edu
+        self.test_email_override = "navidkamal@iut-dhaka.edu"
+        self.test_mode = True  # Set to False in production
+        
         # Check if SMTP is configured
         if not self.smtp_username or not self.smtp_password:
             self.available = False
             logger.warning("SMTP not configured, email notifications will fail")
         else:
             self.available = True
-            logger.info("Email notification provider initialized")
+            if self.test_mode:
+                logger.info(f"Email notification provider initialized in TEST MODE - all emails will be sent to {self.test_email_override}")
+            else:
+                logger.info("Email notification provider initialized")
     
     @property
     def channel(self) -> MessageChannel:
@@ -326,6 +333,12 @@ class EmailNotificationProvider(NotificationProvider):
             logger.error("Email provider not available (SMTP not configured)")
             return False
         
+        # Test mode override: send to test email instead
+        original_to = to
+        if self.test_mode and self.test_email_override:
+            to = self.test_email_override
+            logger.info(f"TEST MODE: Redirecting email from {original_to} to {to}")
+        
         try:
             import smtplib
             from email.mime.text import MIMEText
@@ -345,6 +358,18 @@ class EmailNotificationProvider(NotificationProvider):
             # Plain text version (fallback)
             text_content = message
             
+            # Add test mode notice if redirected
+            test_notice = ""
+            if self.test_mode and self.test_email_override and original_to != to:
+                test_notice = f"""
+    <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+      <p style="margin: 0; color: #92400e; font-weight: bold;">🧪 TEST MODE</p>
+      <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">
+        Original recipient: <strong>{original_to}</strong>
+      </p>
+    </div>
+"""
+            
             # HTML version with styling
             html_content = f"""
 <html>
@@ -355,6 +380,8 @@ class EmailNotificationProvider(NotificationProvider):
     </div>
     
     <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+      {test_notice}
+      
       <div style="font-size: 16px; line-height: 1.8;">
         {message.replace(chr(10), '<br>')}
       </div>
