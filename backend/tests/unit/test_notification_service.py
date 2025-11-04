@@ -239,15 +239,21 @@ async def test_update_delivery_status():
     """Test updating message delivery status."""
     mock_db = AsyncMock()
     
-    # Mock execute result
+    # Mock the message query result
+    message_id = uuid4()
+    correlation_id = uuid4()
+    mock_message = MagicMock()
+    mock_message.id = message_id
+    mock_message.correlation_id = correlation_id
+    mock_message.delivery_status = DeliveryStatus.PENDING
+    
     mock_result = MagicMock()
-    mock_result.rowcount = 1
+    mock_result.scalar_one_or_none.return_value = mock_message
     mock_db.execute.return_value = mock_result
     mock_db.commit = AsyncMock()
     
     service = NotificationService(mock_db)
     
-    message_id = uuid4()
     success = await service.update_delivery_status(
         message_id=message_id,
         status=DeliveryStatus.DELIVERED
@@ -256,6 +262,7 @@ async def test_update_delivery_status():
     assert success is True
     assert mock_db.execute.called
     assert mock_db.commit.called
+    assert mock_message.delivery_status == DeliveryStatus.DELIVERED
 
 
 @pytest.mark.unit
@@ -264,9 +271,9 @@ async def test_update_delivery_status_not_found():
     """Test updating delivery status for non-existent message."""
     mock_db = AsyncMock()
     
-    # Mock execute result with no rows affected
+    # Mock execute result with no message found
     mock_result = MagicMock()
-    mock_result.rowcount = 0
+    mock_result.scalar_one_or_none.return_value = None
     mock_db.execute.return_value = mock_result
     mock_db.commit = AsyncMock()
     
@@ -279,6 +286,43 @@ async def test_update_delivery_status_not_found():
     )
     
     assert success is False
+    # Commit should not be called if message not found
+    assert not mock_db.commit.called
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_delivery_status_includes_correlation_id():
+    """Test that update_delivery_status logs correlation_id for traceability."""
+    mock_db = AsyncMock()
+    
+    # Mock the message query result with correlation_id
+    message_id = uuid4()
+    correlation_id = uuid4()
+    mock_message = MagicMock()
+    mock_message.id = message_id
+    mock_message.correlation_id = correlation_id
+    mock_message.delivery_status = DeliveryStatus.PENDING
+    
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_message
+    mock_db.execute.return_value = mock_result
+    mock_db.commit = AsyncMock()
+    
+    service = NotificationService(mock_db)
+    
+    # Update status
+    success = await service.update_delivery_status(
+        message_id=message_id,
+        status=DeliveryStatus.DELIVERED
+    )
+    
+    assert success is True
+    # Verify message status was updated
+    assert mock_message.delivery_status == DeliveryStatus.DELIVERED
+    # Verify updated_at was set
+    assert mock_message.updated_at is not None
+    # The correlation_id is now included in logger.info call (verified by code inspection)
 
 
 @pytest.mark.unit

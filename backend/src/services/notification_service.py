@@ -627,19 +627,30 @@ class NotificationService:
         Returns:
             True if updated, False if not found
         """
-        result = await self.db.execute(
-            AIMessage.__table__.update()
-            .where(AIMessage.id == message_id)
-            .values(delivery_status=status, updated_at=datetime.now(timezone.utc))
-        )
+        # Query message first to get correlation_id for logging
+        from sqlalchemy import select
+        query = select(AIMessage).where(AIMessage.id == message_id)
+        result = await self.db.execute(query)
+        message = result.scalar_one_or_none()
+        
+        if not message:
+            logger.warning(f"Message not found", extra={"message_id": str(message_id)})
+            return False
+        
+        # Update delivery status
+        message.delivery_status = status
+        message.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         
-        if result.rowcount > 0:
-            logger.info(f"Updated delivery status", extra={"message_id": str(message_id), "status": status.value})
-            return True
-        
-        logger.warning(f"Message not found", extra={"message_id": str(message_id)})
-        return False
+        logger.info(
+            f"Updated delivery status",
+            extra={
+                "message_id": str(message_id),
+                "correlation_id": str(message.correlation_id),
+                "status": status.value,
+            }
+        )
+        return True
 
 
 # Factory function
