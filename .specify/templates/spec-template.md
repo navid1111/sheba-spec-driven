@@ -90,6 +90,22 @@
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
+### Constitution Alignment (MANDATORY)
+
+Every spec MUST include a short "Constitution Alignment" section that documents how
+the proposed feature satisfies the project constitution. At minimum, specify:
+
+- Data handling and privacy considerations (data classes, retention, consent).
+- Required SLOs for realtime interactions (p95/p99 targets) and performance test
+  plans.
+- Model/version contract: model id, expected input/output schemas, and test plan for
+  regression and safety checks.
+- Observability plan: key metrics, traces, logs, and correlation id strategy.
+- Release plan and semantic version implications (including rollback/rollout
+  strategy).
+
+Missing or incomplete alignment MUST be noted as a blocker for Phase 1 completion.
+
 *Example of marking unclear requirements:*
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]

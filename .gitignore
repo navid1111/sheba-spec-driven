@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.pytype/
+.coverage*
+htmlcov/
+
+# Environments
+.venv/
+venv/
+.env
+.env.*
+.envrc
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Logs & Reports
+*.log
+logs/
+coverage/
+
+# Node (if present)
+node_modules/
+
+# Misc
+*.orig
+*.bak
+~$*

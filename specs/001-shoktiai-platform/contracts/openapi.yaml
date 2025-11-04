@@ -1,0 +1,358 @@
+openapi: 3.1.0
+info:
+  title: ShoktiAI Backend API
+  version: 1.0.0
+  description: Core APIs for Customer, Worker, Admin, and internal AI orchestration
+servers:
+  - url: https://api.example.com
+paths:
+  /auth/request-otp:
+    post:
+      summary: Request OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, example: "+8801XXXXXXXXX" }
+      responses:
+        '200': { description: OTP sent }
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone: { type: string }
+                code: { type: string }
+      responses:
+        '200':
+          description: Auth token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+  /services:
+    get:
+      summary: List services
+      responses:
+        '200':
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Service' }
+  /bookings:
+    post:
+      summary: Create booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+    get:
+      summary: My bookings
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+  /bookings/{id}/cancel:
+    post:
+      summary: Cancel booking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Cancelled }
+  /bookings/{id}/review:
+    post:
+      summary: Post review
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
+        '201': { description: Created }
+  /me/ai-messages:
+    get:
+      summary: My AI messages (customer)
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AiMessage' }
+  /me/profile:
+    get:
+      summary: Worker profile
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerProfile'
+  /me/jobs:
+    get:
+      summary: Worker jobs
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [upcoming, active, completed] }
+      responses:
+        '200':
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+  /jobs/{id}/accept:
+    post:
+      summary: Accept job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Accepted }
+  /jobs/{id}/start:
+    post:
+      summary: Start job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Started }
+  /jobs/{id}/complete:
+    post:
+      summary: Complete job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Completed }
+  /me/performance:
+    get:
+      summary: Worker performance (last 30 days)
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPerformance'
+  /me/coachnova-messages:
+    get:
+      summary: Worker coaching messages
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AiMessage' }
+  /admin/metrics/overview:
+    get:
+      summary: Admin metrics overview
+      responses:
+        '200':
+          description: Metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverview'
+  /admin/workers:
+    get:
+      summary: List workers (filters)
+      parameters:
+        - in: query
+          name: low_rating
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkerProfile' }
+  /admin/campaigns:
+    get:
+      summary: List campaigns
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Campaign' }
+  /admin/campaigns/run:
+    post:
+      summary: Trigger SmartEngage campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feature_flag: { type: string }
+      responses:
+        '202': { description: Scheduled }
+  /admin/ai-messages:
+    get:
+      summary: Query AI messages
+      parameters:
+        - in: query
+          name: agent_type
+          schema: { type: string, enum: [smartengage, coachnova] }
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AiMessage' }
+  /events:
+    post:
+      summary: Ingest app events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEvent'
+      responses:
+        '202': { description: Accepted }
+  /internal/ai/smartengage/run-segment:
+    post:
+      summary: Internal trigger to run SmartEngage on a segment
+      responses:
+        '202': { description: Started }
+  /internal/ai/coachnova/run-for-worker/{worker_id}:
+    post:
+      summary: Internal trigger to run CoachNova for a worker
+      parameters:
+        - in: path
+          name: worker_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202': { description: Started }
+
+components:
+  schemas:
+    Service:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        category: { type: string }
+        description: { type: string }
+        base_price: { type: number }
+        duration_minutes: { type: integer }
+    BookingCreate:
+      type: object
+      required: [service_id, scheduled_at]
+      properties:
+        service_id: { type: string, format: uuid }
+        scheduled_at: { type: string, format: date-time }
+        add_ons: { type: array, items: { type: string } }
+    Booking:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        worker_id: { type: string, format: uuid, nullable: true }
+        service_id: { type: string, format: uuid }
+        status: { type: string }
+        scheduled_at: { type: string, format: date-time }
+        total_price: { type: number }
+    ReviewCreate:
+      type: object
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+    AiMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string, enum: [customer, worker] }
+        agent_type: { type: string, enum: [smartengage, coachnova] }
+        channel: { type: string }
+        message_text: { type: string }
+        sent_at: { type: string, format: date-time, nullable: true }
+        delivery_status: { type: string }
+    UserEvent:
+      type: object
+      required: [event_type]
+      properties:
+        event_type: { type: string }
+        metadata: { type: object }
+    WorkerProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        skills: { type: array, items: { type: string } }
+        rating_avg: { type: number }
+        total_jobs_completed: { type: integer }
+    WorkerPerformance:
+      type: object
+      properties:
+        jobs_completed_last_7_days: { type: integer }
+        avg_rating_last_30_days: { type: number }
+        late_arrivals_last_7_days: { type: integer }
+        cancellations_by_worker: { type: integer }
+        workload_score: { type: integer }
+        burnout_score: { type: integer }
+    Campaign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        status: { type: string }
+        run_at: { type: string, format: date-time }

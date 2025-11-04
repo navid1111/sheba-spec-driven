@@ -1,0 +1,104 @@
+I will be making shoktiAI
+🎯 Simple Description
+
+ShoktiAI is an intelligent platform that connects customers and household service workers (like electricians, cleaners, and beauticians) in Bangladesh — but with a human touch powered by AI.
+
+It has two main AI agents:
+
+SmartEngage AI → Helps customers by sending smart, personalized Bengali messages about services they may need.
+
+CoachNova → Helps workers grow by giving them friendly Bengali coaching, training, and support based on their performance.
+
+Together, they form a continuous improvement cycle — customers get better experiences, workers get better opportunities, and the platform grows stronger every day.
+
+👥 User Stories
+1. Rahim – A Busy Customer
+
+Rahim is a busy office worker in Dhaka. He uses the ShoktiAI app to hire cleaners and electricians occasionally.
+
+Before SmartEngage AI:
+He used to forget to book cleaning services until his home became a mess. The old system rarely sent him useful reminders.
+
+Now, with SmartEngage AI:
+
+The system notices that Rahim usually books cleaning services every three weeks.
+
+It sends him a friendly Bengali reminder like:
+
+“ভাই, আপনার বাড়ি পরিষ্কারের সময় প্রায় এসে গেছে। এখন বুকিং করলে রবিবারে সহজে সার্ভিস পাওয়া যাবে।”
+
+The message arrives at the perfect time of day (evening after work) — because the AI knows when Rahim usually opens messages.
+
+He clicks the link, books instantly, and even adds an extra service (fan cleaning).
+
+✅ Result: Rahim gets timely, helpful suggestions — not spam. His satisfaction increases, and he becomes a repeat customer.
+
+2. Sadia – A Young Beautician
+
+Sadia joined the platform recently and provides at-home beauty services.
+
+Before CoachNova:
+She got 3-star reviews but no idea why. No one told her how to improve. She felt discouraged.
+
+Now, with CoachNova:
+
+The AI reviews her recent jobs and finds that customers mentioned she “arrives late sometimes.”
+
+It sends her a gentle Bengali voice note saying:
+
+“সাদিয়া, আপনি গত সপ্তাহে খুব ভালো কাজ করেছেন। সময়মতো পৌঁছানো একটু উন্নতি করলে আপনি শীর্ষ পারফর্মার হবেন!”
+
+It then shows a 2-minute micro-video on time management for service workers.
+
+After a few weeks, her punctuality improves, her ratings go up to 4.7⭐, and she gets priority listings.
+
+✅ Result: Sadia feels respected, supported, and motivated. She sees a clear path to success.
+
+3. Nasir – The Platform Manager
+
+Nasir works in the operations team managing 10,000+ users and 2,000 workers.
+
+Before:
+His team used Excel sheets to send bulk messages. It was slow, manual, and only reached a small fraction of users.
+
+Now, with SmartEngage + CoachNova:
+
+The AI automatically segments users (new, repeat, inactive) and sends personalized notifications without manual work.
+
+Nasir can see a dashboard with:
+
+Engagement rate by user type
+
+Worker performance analytics
+
+Turnover and satisfaction scores
+
+The system even alerts him if a group of workers shows signs of burnout.
+
+✅ Result: The marketing team becomes data-driven, and worker retention improves dramatically.
+
+4. Selina – An Experienced Cleaner
+
+Selina has been working for 3 years but often feels tired and unappreciated.
+
+CoachNova detects that she completed 10 long shifts this week and hasn’t taken a break.
+
+It sends her a kind message:
+
+“সেলিনা আপা, আপনি এই সপ্তাহে অনেক কাজ করেছেন। শরীরটা একটু বিশ্রাম দিন, কালকে ছুটি নিতে পারেন ❤️।”
+
+The app also offers her a small loyalty bonus through the transparent payment system for her consistency.
+
+✅ Result: She feels valued, not exploited. Her morale and loyalty increase.
+
+🔄 How Everything Connects
+Step	What Happens	Who Benefits
+1	SmartEngage sends the right Bengali messages at the right time	Customers get relevant offers
+2	More customers make bookings	Workers get more jobs
+3	CoachNova analyzes worker performance and gives feedback	Workers get better, customers get happier
+4	Better service quality improves trust and engagement	The whole platform grows sustainably
+💡 In Short
+
+ShoktiAI = SmartEngage AI (Customer Intelligence) + CoachNova (Worker Empowerment)
+→ Personalized, Bangla-first, and dignity-centered.
+→ Builds trust, improves quality, and scales sustainably.
