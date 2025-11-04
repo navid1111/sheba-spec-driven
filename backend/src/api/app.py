@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.api.routes import auth, services
+from src.api.routes import auth, services, internal_smartengage
 from src.api.middleware.error_handler import (
     AppException,
     app_exception_handler,
@@ -118,6 +118,7 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 # Include routers
 app.include_router(auth.router)
 app.include_router(services.router)
+app.include_router(internal_smartengage.router)
 
 
 @app.get("/health")

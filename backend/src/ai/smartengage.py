@@ -287,7 +287,7 @@ class SmartEngageOrchestrator:
                 }
             
             # Check marketing consent
-            if not user.consent.get("marketing"):
+            if not user.consent.get("marketing_consent"):
                 logger.info(f"Customer {customer_id} has not consented to marketing")
                 return {
                     "success": False,
@@ -394,7 +394,7 @@ class SmartEngageOrchestrator:
                 )
                 
                 # Get email provider and send
-                email_provider = self.notification_service.get_provider(MessageChannel.EMAIL)
+                email_provider = self.notification_service._get_provider(MessageChannel.EMAIL)
                 if email_provider:
                     await email_provider.send(
                         to=user.email,
@@ -570,11 +570,15 @@ class SmartEngageOrchestrator:
             f"(cadence: {booking_cadence_days} days, window: {send_window_start}-{send_window_end})"
         )
         
+        # Convert hour integers to time strings for segmentation service
+        send_window_start_str = f"{send_window_start:02d}:00"
+        send_window_end_str = f"{send_window_end:02d}:00"
+        
         # Find eligible customers
-        eligible_customers = self.segmentation_service.find_eligible_for_reminders(
+        eligible_customers = self.segmentation_service.identify_eligible_customers(
             booking_cadence_days=booking_cadence_days,
-            send_window_start=send_window_start,
-            send_window_end=send_window_end,
+            send_window_start=send_window_start_str,
+            send_window_end=send_window_end_str,
         )
         
         total_eligible = len(eligible_customers)
@@ -591,12 +595,13 @@ class SmartEngageOrchestrator:
             logger.info(f"Processing batch {i//batch_size + 1} ({len(batch)} customers)")
             
             # Process batch concurrently
+            # Note: eligible_customers is a list of UUIDs, not customer objects
             batch_tasks = [
                 self.generate_and_send_reminder(
-                    customer_id=customer.id,
+                    customer_id=customer_id,
                     promo_code=promo_code,
                 )
-                for customer in batch
+                for customer_id in batch
             ]
             
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
