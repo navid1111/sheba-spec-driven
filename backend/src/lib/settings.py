@@ -71,7 +71,17 @@ class Settings(BaseSettings):
     
     # Application
     app_name: str = Field(default="ShoktiAI Backend", description="Application name")
+    app_base_url: str = Field(
+        default="https://app.sheba.xyz",
+        description="Base URL for mobile app deep links"
+    )
     debug: bool = Field(default=False, description="Debug mode")
+    
+    # Secret key (used for deep link tokens and other signing)
+    secret_key: str = Field(
+        default="change-me-in-prod-secret-key-for-tokens",
+        description="Secret key for token signing and encryption"
+    )
     
     
 # Global settings instance
