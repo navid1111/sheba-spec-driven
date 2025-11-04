@@ -23,9 +23,19 @@ This document resolves planning unknowns and records key technology choices. For
 - Alternatives considered: Fully automated issuance (risk), ad-hoc manual grants (not auditable).
 
 ### CL-OTP-PROVIDER: OTP delivery provider
-- Decision: Twilio SMS for OTP in prototype; pluggable provider interface with a "console" provider for dev/test. Rate-limit OTP requests and hash store codes server-side with short TTL.
-- Rationale: Global availability and good docs; easy to swap for a local BD provider later.
-- Alternatives considered: Local SMS gateway first (longer integration), email-only (not aligned with Bangladesh context).
+- Decision: Email SMTP (Gmail) for OTP delivery. Pluggable provider interface with "console" provider for dev/test. Rate-limit OTP requests and hash store codes server-side with short TTL (5 minutes).
+- Rationale: Email is universally accessible in Bangladesh; lower cost than SMS; Gmail SMTP with app passwords is reliable and easy to configure.
+- Alternatives considered: Twilio SMS (doesn't work in Bangladesh), Mocean SMS (connectivity issues), local SMS gateway (longer integration).
+
+### CL-AI-MESSAGE-CHANNEL: AI message delivery channel
+- Decision: Email as the primary channel for AI-generated messages (SmartEngage customer reminders and CoachNova worker coaching). SMS and WhatsApp remain as optional channels with provider adapters but email is the default and required channel.
+- Rationale: Consistent with OTP provider decision; email works reliably in Bangladesh; beautiful HTML templates possible; lower cost; no SMS gateway dependencies.
+- Alternatives considered: SMS-first (connectivity issues in Bangladesh), WhatsApp-first (requires business verification), push-only (requires app install).
+
+### CL-ADMIN-MESSAGING: Admin-initiated AI messages
+- Decision: Add admin API endpoints to allow managers/admins to manually trigger AI message generation and delivery to specific customers or workers. Requires admin authentication and logs all admin-initiated sends with admin user ID. Uses same AI generation pipeline (OpenAI + safety filters) but bypasses automated campaign triggers.
+- Rationale: Enables human-in-the-loop intervention for special cases (VIP customers, urgent worker support); maintains safety guardrails; provides audit trail.
+- Alternatives considered: Fully automated only (inflexible), manual message composition (bypasses AI safety), separate admin messaging system (duplication).
 
 ### CL-WA-PROVIDER: WhatsApp
 - Decision: Defer for MVP. Design adapter interface; target Twilio WhatsApp or Meta Cloud API in Phase 3 if needed.
@@ -40,9 +50,9 @@ This document resolves planning unknowns and records key technology choices. For
 - Alternatives considered: Celery/RQ with Redis (more infra), OS cron (harder to deploy consistently), Kafka (overkill now).
 
 ### Notifications layer
-- Decision: Abstraction `NotificationService` with adapters: `sms_twilio`, `push_stub` (initial), `whatsapp_tbd`. All sends logged to `ai_messages` and mirrored to `user_activity_events` with correlation ids.
-- Rationale: Clear seams, easy to swap providers, unified logging.
-- Alternatives: Hard-coded Twilio calls (tighter coupling), third-party orchestration (cost/lock-in).
+- Decision: Abstraction `NotificationService` with adapters: `email_smtp` (primary), `sms_twilio`, `sms_mocean`, `push_stub` (initial), `whatsapp_tbd`. All sends logged to `ai_messages` and mirrored to `user_activity_events` with correlation ids. Email provider uses Gmail SMTP with SSL (port 465) and supports beautiful HTML templates with gradient styling.
+- Rationale: Clear seams, easy to swap providers, unified logging. Email as primary channel works reliably in Bangladesh context.
+- Alternatives: Hard-coded Twilio calls (tighter coupling), SMS-first (connectivity issues), third-party orchestration (cost/lock-in).
 
 ### Auth
 - Decision: JWT (HS256) for API; phone+OTP login as primary, email+password optional later. Device/session tokens rotated; blacklist on logout if needed. Admin uses email+password + TOTP.

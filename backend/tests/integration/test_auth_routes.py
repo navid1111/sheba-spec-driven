@@ -21,7 +21,7 @@ def test_request_otp_success():
         
         response = client.post(
             "/auth/request-otp",
-            json={"phone": "+8801712345678"}
+            json={"email": "test@example.com"}
         )
         
         assert response.status_code == 200
@@ -31,17 +31,17 @@ def test_request_otp_success():
 
 
 @pytest.mark.integration
-def test_request_otp_invalid_phone():
-    """Test OTP request with invalid phone."""
+def test_request_otp_invalid_email():
+    """Test OTP request with invalid email."""
     # Mock the auth service to raise ValueError
     with patch("src.api.routes.auth.AuthService") as MockAuthService:
         mock_service = AsyncMock()
-        mock_service.request_otp.side_effect = ValueError("Invalid phone number")
+        mock_service.request_otp.side_effect = ValueError("Invalid email address")
         MockAuthService.return_value = mock_service
         
         response = client.post(
             "/auth/request-otp",
-            json={"phone": "invalid"}
+            json={"email": "invalid"}
         )
         
         assert response.status_code == 400
@@ -60,7 +60,7 @@ def test_request_otp_send_failure():
         
         response = client.post(
             "/auth/request-otp",
-            json={"phone": "+8801712345678"}
+            json={"email": "test@example.com"}
         )
         
         assert response.status_code == 500
@@ -78,14 +78,14 @@ def test_verify_otp_success():
             "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             "user_id": "123e4567-e89b-12d3-a456-426614174000",
             "user_type": "CUSTOMER",
-            "phone": "+8801712345678"
+            "email": "test@example.com"
         }
         MockAuthService.return_value = mock_service
         
         response = client.post(
             "/auth/verify-otp",
             json={
-                "phone": "+8801712345678",
+                "email": "test@example.com",
                 "code": "123456"
             }
         )
@@ -96,7 +96,7 @@ def test_verify_otp_success():
         assert "user_id" in data
         assert "user_type" in data
         assert data["user_type"] == "CUSTOMER"
-        assert data["phone"] == "+8801712345678"
+        assert data["email"] == "test@example.com"
 
 
 @pytest.mark.integration
@@ -111,7 +111,7 @@ def test_verify_otp_invalid_code():
         response = client.post(
             "/auth/verify-otp",
             json={
-                "phone": "+8801712345678",
+                "email": "test@example.com",
                 "code": "999999"
             }
         )
@@ -127,7 +127,7 @@ def test_verify_otp_missing_fields():
     """Test OTP verification with missing fields."""
     response = client.post(
         "/auth/verify-otp",
-        json={"phone": "+8801712345678"}  # Missing 'code'
+        json={"email": "test@example.com"}  # Missing 'code'
     )
     
     assert response.status_code == 422  # Validation error
@@ -153,7 +153,7 @@ def test_verify_otp_invalid_code_length():
 @pytest.mark.integration
 def test_full_auth_flow():
     """Test complete authentication flow."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     
     with patch("src.api.routes.auth.AuthService") as MockAuthService:
         mock_service = AsyncMock()
@@ -164,7 +164,7 @@ def test_full_auth_flow():
         
         response = client.post(
             "/auth/request-otp",
-            json={"phone": phone}
+            json={"email": email}
         )
         assert response.status_code == 200
         
@@ -173,12 +173,12 @@ def test_full_auth_flow():
             "token": "jwt_token_here",
             "user_id": "user-uuid",
             "user_type": "CUSTOMER",
-            "phone": phone
+            "email": email
         }
         
         response = client.post(
             "/auth/verify-otp",
-            json={"phone": phone, "code": "123456"}
+            json={"email": email, "code": "123456"}
         )
         assert response.status_code == 200
         data = response.json()

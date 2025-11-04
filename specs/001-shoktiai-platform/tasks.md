@@ -54,17 +54,17 @@ CRITICAL: Must complete before user stories.
 - [X] T014 Create engagement/event models: `backend/src/models/ai_message_templates.py`, `backend/src/models/ai_messages.py`, `backend/src/models/user_activity_events.py`
 - [X] T015 Create jobs/campaign models: `backend/src/models/jobs.py`, `backend/src/models/campaigns.py`
 - [X] T016 Generate and run Alembic migrations for all above in `backend/migrations/` (upgrade creates tables + indexes)
-- [ ] T017 [P] Implement JWT utilities in `backend/src/lib/jwt.py` (HS256, exp, iat, sub)
-- [ ] T018 [P] Implement OTP provider abstraction in `backend/src/services/otp_provider.py` with `console` and `twilio` adapters
-- [ ] T019 [P] Implement AuthService in `backend/src/services/auth_service.py` (request_otp, verify_otp -> issues JWT)
-- [ ] T020 [P] Implement auth routes per contract: `backend/src/api/routes/auth.py` -> POST /auth/request-otp, /auth/verify-otp
-- [ ] T021 Wire API router and middleware (CORS, correlation_id) in `backend/src/api/app.py`
-- [ ] T022 [P] NotificationService abstraction in `backend/src/services/notification_service.py` (sms_twilio, push_stub); all sends write `ai_messages`
-- [ ] T023 [P] Implement consent & frequency cap checks in `backend/src/lib/consent.py` used by NotificationService
-- [ ] T024 [P] OpenAI safety filter and guardrails in `backend/src/ai/safety.py` (banned phrases, tone checks; reject or fallback)
-- [ ] T025 [P] Scheduler runner in `backend/src/jobs/scheduler.py` (APScheduler + Postgres advisory lock via jobs table)
-- [ ] T026 [P] Seed initial `ai_message_templates` migration in `backend/migrations/versions/` (SmartEngage reminder v1, CoachNova v1)
-- [ ] T027 [P] Implement basic Services API: `backend/src/api/routes/services.py` (GET /services) with listing stub
+- [X] T017 [P] Implement JWT utilities in `backend/src/lib/jwt.py` (HS256, exp, iat, sub)
+- [X] T018 [P] Implement OTP provider abstraction in `backend/src/services/otp_provider.py` with `console` and `twilio` adapters
+- [X] T019 [P] Implement AuthService in `backend/src/services/auth_service.py` (request_otp, verify_otp -> issues JWT)
+- [X] T020 [P] Implement auth routes per contract: `backend/src/api/routes/auth.py` -> POST /auth/request-otp, /auth/verify-otp
+- [X] T021 Wire API router and middleware (CORS, correlation_id) in `backend/src/api/app.py`
+- [X] T022 [P] NotificationService abstraction in `backend/src/services/notification_service.py` (sms_twilio, push_stub); all sends write `ai_messages`
+- [X] T023 [P] Implement consent & frequency cap checks in `backend/src/lib/consent.py` used by NotificationService
+- [X] T024 [P] OpenAI safety filter and guardrails in `backend/src/ai/safety.py` (banned phrases, tone checks; reject or fallback)
+- [X] T025 [P] Scheduler runner in `backend/src/jobs/scheduler.py` (APScheduler + Postgres advisory lock via jobs table)
+- [X] T026 [P] Seed initial `ai_message_templates` migration in `backend/migrations/versions/` (SmartEngage reminder v1, CoachNova v1)
+- [X] T027 [P] Implement basic Services API: `backend/src/api/routes/services.py` (GET /services) with listing stub
 - [ ] T028 [P] Add error handler middleware in `backend/src/api/middleware/error_handler.py` (maps exceptions to JSON errors)
 - [ ] T029 Add minimal contract tests: `backend/tests/contract/test_auth_and_services_contract.py` for /auth/* and /services
 

@@ -1,96 +1,120 @@
-# Implementation Plan: ShoktiAI Platform (SmartEngage + CoachNova)
+# Implementation Plan: [FEATURE]
 
-**Branch**: `[001-shoktiai-platform]` | **Date**: 2025-11-03 | **Spec**: `specs/001-shoktiai-platform/spec.md`
-**Input**: Feature specification from `/specs/001-shoktiai-platform/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Build a FastAPI-based backend with a Postgres (Neon) data layer, an AI orchestration layer that calls OpenAI for Bengali message/coaching generation, and a lightweight jobs/messaging system using Postgres plus a scheduler for campaigns and daily snapshots. Deliver core CRUD/auth, event logging, analytics snapshots, and initial AI-driven SmartEngage reminders and CoachNova coaching with contracts and observability.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Python 3.11  
-**Primary Dependencies**: FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic, httpx, PyJWT, python-dotenv, OpenAI SDK, APScheduler 3.x (scheduler), tenacity (retry), uvicorn  
-**Storage**: PostgreSQL (Neon) for OLTP; tables for users, workers, customers, services, bookings, reviews, events, snapshots, ai_messages, templates, campaigns/jobs  
-**Testing**: pytest, pytest-asyncio, httpx test client, factory-boy for fixtures  
-**Target Platform**: Linux container (uvicorn) behind a reverse proxy; dev on Windows/macOS acceptable  
-**Project Type**: Web backend (API-only)  
-**Performance Goals**: API p95 < 200ms under nominal load; AI delivery p95 < 5 minutes end-to-end; daily snapshot job < 15 minutes for 100k workers  
-**Constraints**: JWT auth; phone OTP primary (Bangladesh). Rate-limits on auth and AI endpoints. Strict consent/frequency caps.  
-**Scale/Scope**: Phase 1 target: 10–50k monthly active customers, 1–5k workers; 10s RPS burst on read endpoints; campaigns up to 50k messages/day.
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
 
-NEEDS CLARIFICATION:
-- OTP delivery provider and fallback (e.g., Twilio vs local SMS) [CL-OTP-PROVIDER]
-- Default consent model and max weekly frequency for customers/workers [from spec CL-001]
-- Coaching modality priority (voice vs text vs user preference) [from spec CL-002]
-- Recognition governance: approver(s), monthly caps, cohort rules [from spec CL-003]
-- WhatsApp enablement timeline/provider (if any) [CL-WA-PROVIDER]
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [single/web/mobile - determines source structure]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
-Gate status (pre-Phase 0): CONDITIONAL PASS — sections defined; marked clarifications to be resolved in research. Any unresolved items post-Phase 1 will FAIL the gate.
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Security & Privacy:
-- Data classes: PII (phone, email, name), behavioral data (events), booking history, worker performance, AI content/logs.
-- Consent: opt-in/opt-out stored per channel with timestamp and source; suppression honored globally. [CL-001]
-- Retention: raw prompts/responses trimmed of PII; events 12 months; ai_messages 12 months; bookings 7 years; de-identified aggregates retained longer.
-- RBAC: roles customer/worker/admin; admin-only access to campaigns/metrics; least-privileged DB access.
-- Secrets in env; encryption in transit; at-rest via Neon defaults; DSRs supported (delete/anonymize user data on request).
+Constitution Alignment (MANDATORY): every plan MUST include a brief subsection that
+documents how the feature satisfies the project constitution. At minimum, address:
 
-Real-time Reliability & Performance:
-- SLOs: API p95/p99 200/400ms; outreach end-to-end p95/p99 5/15 minutes; booking deep link flow complete in ≤3 minutes p95.
-- Degradation: if AI unavailable, use safe fallback templates; if scheduler down, defer sends; rate-limit auth/AI.
-- Capacity: APScheduler + single runner with Postgres advisory locks; campaign batching and backoff; idempotent job processing.
+- Security & Privacy: data classes used, retention plan, consent model, and any PII
+  handling. Note any compliance approvals required (e.g., GDPR, CCPA).
+- Real-time Reliability & Performance: proposed SLOs (p95/p99), expected load,
+  degradation behavior, and any capacity/scale concerns.
+- Deterministic & Testable AI Behavior: model artifact versioning, contract tests,
+  reproducibility approach, and known failure modes.
+- Observability & Error Transparency: logs, traces, metrics to be emitted and
+  correlation ids or tracing strategy.
+- Versioning & Governance: semantic version implications, required migration or
+  rollout plan (canary/feature-flag strategy), and rollback plan.
 
-Deterministic & Testable AI Behavior:
-- Versioned prompts and template IDs; input/output JSON schemas; store model name/version; safety filters for tone/respectfulness.
-- Contract tests for message/coach payload shape; seeded examples for regression; retries with circuit-breakers.
-
-Observability & Error Transparency:
-- Structured logs with correlation_id; traces for API calls and AI calls; metrics: send volume, delivery, opens, clicks, conversions, coaching impact; alerts for SLO breaches and opt-out spikes.
-
-Versioning & Governance:
-- OpenAPI v1.0.0; semantic versioning for API/contracts; feature flags for campaigns/coaching; canary cohorts; rollback by disabling campaign flags and reverting templates.
+If any of these gates cannot be met at planning time, the plan MUST include an explicit
+justification and a mitigation plan (timeline and owner). The `/speckit.plan` command will
+verify this subsection exists and fail the gate if absent.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/001-shoktiai-platform/
-├── plan.md              # This file (/speckit.plan output)
-├── research.md          # Phase 0 output (clarifications resolved)
-├── data-model.md        # Phase 1 output (entities, rules, state)
-├── quickstart.md        # Phase 1 output (setup & run)
-└── contracts/           # Phase 1 output (OpenAPI)
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
+
+tests/
+├── contract/
+├── integration/
+└── unit/
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
 ├── src/
-│   ├── api/            # FastAPI routers (customer, worker, admin, internal)
-│   ├── models/         # SQLAlchemy models + Alembic migrations
-│   ├── services/       # domain services (booking, segmentation, notifications)
-│   ├── ai/             # orchestration (SmartEngage, CoachNova)
-│   ├── jobs/           # APScheduler jobs + job runners
-│   └── lib/            # utils (auth, db, config, observability)
+│   ├── models/
+│   ├── services/
+│   └── api/
 └── tests/
-    ├── unit/
-    ├── integration/
-    └── contract/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: API-only backend in `backend/` with clear separation between API, domain services, AI orchestration, and jobs. Tests mirrored by layer.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Scheduler in-process | Simple MVP scheduling needs | External queues add infra ops burden initially |
-
----
-
-Re-evaluation (post-Phase 1 design): PASS — CL-001/002/003 and provider choices are resolved in `research.md`. Remaining WhatsApp enablement is explicitly deferred with adapter seam; does not affect Phase 1 gates.
-
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

@@ -11,7 +11,7 @@ from src.services.auth_service import AuthService
 @pytest.fixture
 def mock_session():
     """Create mock database session."""
-    return AsyncMock()
+    return MagicMock()
 
 
 @pytest.fixture
@@ -23,34 +23,34 @@ def auth_service(mock_session):
 @pytest.mark.asyncio
 async def test_request_otp_success(auth_service):
     """Test successful OTP request."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     
     # Mock the OTP service
     with patch.object(auth_service.otp_service, 'request_otp', new_callable=AsyncMock) as mock_otp:
         mock_otp.return_value = True
         
-        result = await auth_service.request_otp(phone)
+        result = await auth_service.request_otp(email)
         
         assert result is True
-        mock_otp.assert_called_once_with(phone)
+        mock_otp.assert_called_once_with(email)
 
 
 @pytest.mark.asyncio
-async def test_request_otp_invalid_phone(auth_service):
-    """Test OTP request with invalid phone number."""
-    # Missing + prefix
-    with pytest.raises(ValueError, match="E.164 format"):
-        await auth_service.request_otp("8801712345678")
+async def test_request_otp_invalid_email(auth_service):
+    """Test OTP request with invalid email address."""
+    # Invalid email format
+    with pytest.raises(ValueError, match="Invalid email address"):
+        await auth_service.request_otp("not-an-email")
     
-    # Empty phone
-    with pytest.raises(ValueError, match="E.164 format"):
+    # Empty email
+    with pytest.raises(ValueError, match="Invalid email address"):
         await auth_service.request_otp("")
 
 
 @pytest.mark.asyncio
 async def test_verify_otp_creates_new_user(auth_service, mock_session):
     """Test OTP verification creates new user."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     code = "123456"
     
     # Mock OTP verification to succeed
@@ -62,14 +62,13 @@ async def test_verify_otp_creates_new_user(auth_service, mock_session):
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
         
-        result = await auth_service.verify_otp(phone, code)
+        result = await auth_service.verify_otp(email, code)
         
         assert result is not None
         assert "token" in result
-        assert result["phone"] == phone
-        assert result["user_type"] == "CUSTOMER"
+        assert result["email"] == email
+        assert result["user_type"] == "customer"
         
-        # Verify JWT token format
         token = result["token"]
         assert isinstance(token, str)
         assert len(token) > 0
@@ -82,16 +81,16 @@ async def test_verify_otp_creates_new_user(auth_service, mock_session):
 @pytest.mark.asyncio
 async def test_verify_otp_existing_user(auth_service, mock_session):
     """Test OTP verification with existing user."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     code = "123456"
     user_id = uuid4()
     
     # Create mock existing user
     existing_user = MagicMock(spec=User)
     existing_user.id = user_id
-    existing_user.phone = phone
+    existing_user.email = email
     existing_user.type = MagicMock()
-    existing_user.type.value = "WORKER"  # Mock enum value
+    existing_user.type.value = "worker"  # Mock enum value
     existing_user.last_login_at = None
     
     # Mock OTP verification
@@ -103,12 +102,12 @@ async def test_verify_otp_existing_user(auth_service, mock_session):
         mock_result.scalar_one_or_none.return_value = existing_user
         mock_session.execute.return_value = mock_result
         
-        result = await auth_service.verify_otp(phone, code)
+        result = await auth_service.verify_otp(email, code)
         
         assert result is not None
         assert result["user_id"] == str(user_id)
-        assert result["user_type"] == "WORKER"
-        assert result["phone"] == phone
+        assert result["user_type"] == "worker"
+        assert result["email"] == email
         
         # Verify last_login_at was updated
         assert existing_user.last_login_at is not None
@@ -118,14 +117,14 @@ async def test_verify_otp_existing_user(auth_service, mock_session):
 @pytest.mark.asyncio
 async def test_verify_otp_invalid_code(auth_service):
     """Test OTP verification with invalid code."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     code = "999999"
     
     # Mock OTP verification to fail
     with patch.object(auth_service.otp_service, 'verify_otp', new_callable=AsyncMock) as mock_verify:
         mock_verify.return_value = False
         
-        result = await auth_service.verify_otp(phone, code)
+        result = await auth_service.verify_otp(email, code)
         
         assert result is None
 
@@ -133,7 +132,7 @@ async def test_verify_otp_invalid_code(auth_service):
 @pytest.mark.asyncio
 async def test_verify_otp_custom_user_type(auth_service, mock_session):
     """Test creating user with custom user type."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     code = "123456"
     
     # Mock OTP verification
@@ -145,27 +144,27 @@ async def test_verify_otp_custom_user_type(auth_service, mock_session):
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
         
-        result = await auth_service.verify_otp(phone, code, user_type="ADMIN")
+        result = await auth_service.verify_otp(email, code, user_type="ADMIN")
         
         assert result is not None
-        assert result["user_type"] == "ADMIN"
+        assert result["user_type"] == "admin"
 
 
 @pytest.mark.asyncio
 async def test_logout(auth_service):
     """Test logout clears OTP."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     
-    with patch.object(auth_service.otp_service, 'clear_otp') as mock_clear:
-        await auth_service.logout(phone)
+    with patch.object(auth_service.otp_service, 'clear_otp', new_callable=AsyncMock) as mock_clear:
+        await auth_service.logout(email)
         
-        mock_clear.assert_called_once_with(phone)
+        mock_clear.assert_called_once_with(email)
 
 
 @pytest.mark.asyncio
 async def test_full_auth_flow(auth_service, mock_session):
     """Test complete authentication flow: request OTP -> verify -> get token."""
-    phone = "+8801712345678"
+    email = "test@example.com"
     
     # Mock OTP service
     with patch.object(auth_service.otp_service, 'request_otp', new_callable=AsyncMock) as mock_request, \
@@ -180,11 +179,11 @@ async def test_full_auth_flow(auth_service, mock_session):
         mock_session.execute.return_value = mock_result
         
         # Step 1: Request OTP
-        request_success = await auth_service.request_otp(phone)
+        request_success = await auth_service.request_otp(email)
         assert request_success is True
         
         # Step 2: Verify OTP and get token
-        result = await auth_service.verify_otp(phone, "123456")
+        result = await auth_service.verify_otp(email, "123456")
         assert result is not None
         assert "token" in result
         
