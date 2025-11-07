@@ -3,8 +3,14 @@ Consent and frequency cap utilities for notification system.
 
 Provides functions to check:
 1. User consent per channel (SMS, Push, WhatsApp, etc.)
-2. Frequency caps to prevent spam (e.g., max N messages per day/week)
-3. Opt-out management
+2. Worker coaching consent (coaching_enabled flag)
+3. Frequency caps to prevent spam (e.g., max N messages per day/week)
+4. Opt-out management
+
+For workers:
+- General notifications (SMS/Email/Push): Use channel-based consent from User record
+- CoachNova coaching: Check 'coaching_enabled' in consent JSONB
+- Voice coaching: Check Worker.opt_in_voice field
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -80,6 +86,96 @@ def _get_caps_for_role(role: MessageRole, channel: MessageChannel, custom_caps: 
         weekly_cap = freq_caps.push_weekly_limit or weekly_cap
     
     return daily_cap, weekly_cap
+
+
+async def check_worker_coaching_consent(
+    db: AsyncSession,
+    worker_id: UUID,
+) -> bool:
+    """
+    Check if worker has consented to receive CoachNova coaching interventions.
+    
+    This is a specialized consent check for worker performance coaching
+    separate from general notification consent. Workers must explicitly
+    opt-in to coaching via the 'coaching_enabled' flag in their consent.
+    
+    Args:
+        db: AsyncSession
+        worker_id: Worker ID
+        
+    Returns:
+        True if worker has opted in to coaching, False otherwise
+    """
+    try:
+        # Fetch worker's User record (workers are also users)
+        stmt = select(User).where(User.id == worker_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            logger.warning(f"User not found for worker: {worker_id}")
+            return False
+        
+        # Check coaching_enabled flag in consent JSONB
+        consent = user.consent or {}
+        coaching_enabled = consent.get('coaching_enabled', False)
+        
+        logger.info(
+            f"Coaching consent check for worker",
+            extra={
+                "worker_id": str(worker_id),
+                "coaching_enabled": coaching_enabled,
+            }
+        )
+        
+        return coaching_enabled
+    
+    except Exception as e:
+        logger.error(f"Error checking worker coaching consent: {e}", exc_info=True)
+        return False
+
+
+async def check_worker_voice_consent(
+    db: AsyncSession,
+    worker_id: UUID,
+) -> bool:
+    """
+    Check if worker has opted in to receive voice coaching.
+    
+    Voice coaching is optional and requires explicit opt-in via
+    the Worker.opt_in_voice field.
+    
+    Args:
+        db: AsyncSession
+        worker_id: Worker ID
+        
+    Returns:
+        True if worker has opted in to voice coaching, False otherwise
+    """
+    try:
+        stmt = select(Worker).where(Worker.id == worker_id)
+        result = await db.execute(stmt)
+        worker = result.scalar_one_or_none()
+        
+        if not worker:
+            logger.warning(f"Worker not found: {worker_id}")
+            return False
+        
+        voice_enabled = worker.opt_in_voice or False
+        
+        logger.info(
+            f"Voice coaching consent check for worker",
+            extra={
+                "worker_id": str(worker_id),
+                "voice_enabled": voice_enabled,
+            }
+        )
+        
+        return voice_enabled
+    
+    except Exception as e:
+        logger.error(f"Error checking worker voice consent: {e}", exc_info=True)
+        return False
 
 
 async def check_consent(
@@ -339,6 +435,56 @@ async def update_consent(
     
     except Exception as e:
         logger.error(f"Error updating consent: {e}", exc_info=True)
+        await db.rollback()
+        return False
+
+
+async def update_worker_coaching_consent(
+    db: AsyncSession,
+    worker_id: UUID,
+    coaching_enabled: bool,
+) -> bool:
+    """
+    Update worker's consent for CoachNova coaching interventions.
+    
+    Args:
+        db: AsyncSession
+        worker_id: Worker ID
+        coaching_enabled: True to opt-in to coaching, False to opt-out
+        
+    Returns:
+        True if updated successfully, False otherwise
+    """
+    try:
+        # Fetch worker's User record
+        stmt = select(User).where(User.id == worker_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            logger.warning(f"User not found for worker: {worker_id}")
+            return False
+        
+        # Update coaching_enabled in consent JSONB
+        consent = user.consent or {}
+        consent['coaching_enabled'] = coaching_enabled
+        consent['updated_at'] = datetime.now(timezone.utc).isoformat()
+        
+        user.consent = consent
+        await db.commit()
+        
+        logger.info(
+            f"Updated worker coaching consent",
+            extra={
+                "worker_id": str(worker_id),
+                "coaching_enabled": coaching_enabled,
+            }
+        )
+        
+        return True
+    
+    except Exception as e:
+        logger.error(f"Error updating worker coaching consent: {e}", exc_info=True)
         await db.rollback()
         return False
 

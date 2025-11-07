@@ -22,6 +22,7 @@ class ServiceResponse(BaseModel):
     description: Optional[str] = None
     base_price: float
     duration_minutes: int
+    active: bool = True
     
     model_config = {"from_attributes": True}
 
@@ -72,6 +73,7 @@ def list_services(
             description=s.description,
             base_price=float(s.base_price),
             duration_minutes=s.duration_minutes,
+            active=s.active,
         )
         for s in services
     ]

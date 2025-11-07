@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.api.routes import auth, services, internal_smartengage, admin_smartengage, events, internal_coachnova
+from src.api.routes import auth, services, internal_smartengage, admin_smartengage, events, internal_coachnova, admin_metrics, admin_workers, admin_alerts
 from src.api.middleware.error_handler import (
     AppException,
     app_exception_handler,
@@ -122,6 +122,9 @@ app.include_router(services.router)
 app.include_router(internal_smartengage.router)
 app.include_router(internal_coachnova.router)
 app.include_router(admin_smartengage.router)
+app.include_router(admin_metrics.router)
+app.include_router(admin_workers.router)
+app.include_router(admin_alerts.router)
 app.include_router(events.router)
 
 
