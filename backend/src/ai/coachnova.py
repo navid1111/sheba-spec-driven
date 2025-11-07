@@ -22,9 +22,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from src.lib.logging import get_logger
 from src.lib.metrics import get_metrics_collector
+from src.ai.template_loader import load_template, format_template
 from src.services.performance_service import PerformanceService
 from src.services.notification_service import (
     get_notification_service,
@@ -106,8 +109,18 @@ class CoachNovaOrchestrator:
         late_arrivals = performance_signals.get('late_arrivals_last_7_days', 0)
         avg_rating = performance_signals.get('avg_rating_last_30_days')
         
-        # Create system prompt (dignity-centered, empathetic)
-        system_prompt = """You are CoachNova, an empathetic coaching assistant for service workers in Bangladesh.
+        # Load template from file (with fallback)
+        try:
+            template_content = load_template(agent_type='coaching', locale='bn', version=1)
+            if template_content:
+                # Extract system prompt from template (everything before "## Example Messages")
+                system_prompt = template_content.split('## Example Messages')[0].strip()
+            else:
+                raise FileNotFoundError("Template returned None")
+        except Exception as e:
+            logger.warning(f"Failed to load coaching template: {e}, using fallback")
+            # Fallback system prompt
+            system_prompt = """You are CoachNova, an empathetic coaching assistant for service workers in Bangladesh.
 
 Your role is to provide constructive, dignity-centered coaching in Bengali. Follow these guidelines:
 
@@ -123,7 +136,7 @@ Your role is to provide constructive, dignity-centered coaching in Bengali. Foll
 6. EMPHASIZE: Growth, support, practical solutions
 
 Remember: Workers are valued professionals. Frame all feedback as opportunities for growth."""
-
+        
         # Build user prompt with performance context
         if 'late_arrivals' in issues:
             issue_context = f"সাম্প্রতিক ৭ দিনে {late_arrivals}টি কাজে কিছুটা দেরি হয়েছে"
@@ -278,6 +291,79 @@ Tone: Empathetic, supportive, dignity-centered (NO shaming or harsh words)"""
             'length_valid': True,
             'reason': None
         }
+    
+    async def _send_email_notification_async(
+        self,
+        worker_email: str,
+        worker_name: str,
+        coaching_message: str,
+        message_id: UUID,
+        correlation_id: UUID,
+    ) -> bool:
+        """
+        Send coaching email asynchronously (helper for sync context).
+        
+        Args:
+            worker_email: Worker's email address
+            worker_name: Worker's name
+            coaching_message: Generated coaching message
+            message_id: AIMessage ID
+            correlation_id: Request correlation ID
+            
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            from src.services.notification_service import EmailNotificationProvider
+            
+            # Create email provider
+            email_provider = EmailNotificationProvider()
+            
+            if not email_provider.available:
+                logger.error("Email provider not available (SMTP not configured)")
+                return False
+            
+            # Build email subject
+            subject = "শক্তি থেকে আপনার জন্য কিছু পরামর্শ | Coaching from ShoktiAI"
+            
+            # Send email
+            success = await email_provider.send(
+                to=worker_email,
+                message=coaching_message,
+                subject=subject,
+                agent_type="coachnova",
+                message_type="coaching",
+            )
+            
+            if success:
+                logger.info(
+                    f"Coaching email sent to {worker_email}",
+                    extra={
+                        "message_id": str(message_id),
+                        "correlation_id": str(correlation_id),
+                    }
+                )
+            else:
+                logger.error(
+                    f"Email provider returned False for {worker_email}",
+                    extra={
+                        "message_id": str(message_id),
+                        "correlation_id": str(correlation_id),
+                    }
+                )
+            
+            return success
+            
+        except Exception as e:
+            logger.error(
+                f"Error in _send_email_notification_async: {e}",
+                exc_info=True,
+                extra={
+                    "message_id": str(message_id),
+                    "correlation_id": str(correlation_id),
+                }
+            )
+            return False
     
     async def generate_coaching(
         self,
@@ -533,21 +619,90 @@ Tone: Empathetic, supportive, dignity-centered (NO shaming or harsh words)"""
             }
         )
         
-        # Step 8: Trigger notification (email delivery)
+        # Step 8: Send email notification
+        # Use thread pool executor to run async email sending from sync context
         try:
-            notification_service = self._notification_service or get_notification_service(db)
-            # TODO: Implement notification delivery
-            # await notification_service.send_coaching(ai_message)
-            logger.info(
-                "Notification queued for delivery",
-                extra={"message_id": str(message_id)}
-            )
+            # Get worker email from User model
+            worker_email = getattr(user, 'email', None)
+            
+            if not worker_email:
+                logger.warning(
+                    "Worker has no email address, cannot deliver coaching",
+                    extra={"worker_id": str(worker_id)}
+                )
+                ai_message.delivery_status = DeliveryStatus.FAILED
+                db.commit()
+            else:
+                # Create a new event loop in a thread pool for async email sending
+                import threading
+                import queue
+                
+                result_queue = queue.Queue()
+                
+                def run_async_email():
+                    """Run async email sending in a separate thread with its own event loop."""
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        success = loop.run_until_complete(
+                            self._send_email_notification_async(
+                                worker_email=worker_email,
+                                worker_name=user.name,
+                                coaching_message=coaching_message,
+                                message_id=message_id,
+                                correlation_id=correlation_id,
+                            )
+                        )
+                        loop.close()
+                        result_queue.put(('success', success))
+                    except Exception as e:
+                        result_queue.put(('error', str(e)))
+                
+                # Run in separate thread
+                thread = threading.Thread(target=run_async_email)
+                thread.start()
+                thread.join(timeout=30)  # 30 second timeout
+                
+                # Get result
+                try:
+                    result_type, result_value = result_queue.get(timeout=1)
+                    if result_type == 'success' and result_value:
+                        ai_message.delivery_status = DeliveryStatus.SENT
+                        ai_message.sent_at = datetime.now(timezone.utc)
+                        logger.info(
+                            "Coaching email sent successfully",
+                            extra={
+                                "message_id": str(message_id),
+                                "worker_email": worker_email,
+                                "correlation_id": str(correlation_id),
+                            }
+                        )
+                    else:
+                        ai_message.delivery_status = DeliveryStatus.FAILED
+                        logger.error(
+                            f"Failed to send coaching email: {result_value if result_type == 'error' else 'Unknown'}",
+                            extra={
+                                "message_id": str(message_id),
+                                "worker_email": worker_email,
+                            }
+                        )
+                except queue.Empty:
+                    ai_message.delivery_status = DeliveryStatus.FAILED
+                    logger.error(
+                        "Email sending timed out",
+                        extra={"message_id": str(message_id)}
+                    )
+                
+                db.commit()
+                
         except Exception as e:
             logger.error(
                 f"Notification delivery failed: {e}",
                 exc_info=True,
                 extra={"message_id": str(message_id)}
             )
+            ai_message.delivery_status = DeliveryStatus.FAILED
+            db.commit()
             # Don't fail the entire flow if notification fails
             # Message is stored and can be retried
         
